@@ -99,7 +99,7 @@ my $window = Prima::MainWindow->new(
 		my $pod = $notebook->insert_to_page(1, PodView =>
 			pack => { fill => 'both', expand => 1, padx => $padding, pady => $padding },
 		);
-#		$pod->load_file($app_filename);
+		$pod->load_file($app_filename);
 
 		
 	# Add the eval line:
@@ -454,19 +454,21 @@ sub pressed_enter {
 	# Check for the help command. If they just type 'help', show them the
 	# documentation for this application:
 	if ($in_text eq 'help' or $in_text eq 'help help') {
-		$pod->load_file($app_filename);
-		goto_page 1;
+		$::application->open_help($app_filename);
+#		$pod->load_file($app_filename);
+#		goto_page 1;
 	}
 	# If they want help for a specific module, show that:
 	elsif ($in_text =~ /^help/) {
 		# Select the help tab
-		goto_page 1;
+#		goto_page 1;
 		
 		# If they specified a module, open its pod
 		if ($in_text =~ /^help\s+(.+)/) {
 			my $module = $1;
 			print "Opening the documentation for $module";
-			$pod->load_file($module);
+			$::application->open_help($module);
+#			$pod->load_file($module);
 		}
 	}
 	elsif ($in_text =~ /^pdldoc\s+(.+)/) {
