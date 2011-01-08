@@ -2,10 +2,6 @@
 use strict;
 use warnings;
 
-# Known bug: resizing the window when not viewing the help page causes the
-# gui to croak when you do view the help page. Not quite sure how to fix this,
-# yet.
-
 use Prima;
 use Prima::Buttons;
 use Prima::Notebooks;
@@ -33,6 +29,7 @@ BEGIN {
 }
 
 my $app_filename = File::Spec->catfile($FindBin::Bin, $FindBin::Script);
+my $version = 0.1;
 
 ##########################
 # Initialize the history #
@@ -64,10 +61,19 @@ END {
 	close $fh;
 }
 
-# A very handy function that I use throughout, but which needs to be defined
-# later.
-sub goto_page;
+my @file_extension_list = (
+		  ['Perl scripts'		=> '*.pl'	]
+		, ['PDL modules'		=> '*.pdl'	]
+		, ['Perl modules'		=> '*.pm'	]
+		, ['POD documents'	=> '*.pod'		]
+		, ['Test suite'		=> '*.t'		]
+		, ['All'				=> '*'		]
+);
 
+
+# Very handy functions that I use throughout, but which I define later.
+sub goto_page;
+sub goto_output;
 
 
 my $padding = 10;
@@ -79,7 +85,7 @@ my $window = Prima::MainWindow->new(
 	# Add a notbook with output and help tabs:
 	my $notebook = $window->insert(TabbedScrollNotebook =>
 		pack => { fill => 'both', expand => 1, padx => $padding, pady => $padding },
-		tabs => ['Output', 'Help'],
+		tabs => ['Output'],
 		style => tns::Simple,
 	);
 		my $output = $notebook->insert_to_page(0, Edit =>
@@ -96,12 +102,6 @@ my $window = Prima::MainWindow->new(
 			, ['', '', km::Ctrl | kb::PageDown,	\&goto_next_page	]	# next
 		], '', 0);
 
-		my $pod = $notebook->insert_to_page(1, PodView =>
-			pack => { fill => 'both', expand => 1, padx => $padding, pady => $padding },
-		);
-		$pod->load_file($app_filename);
-
-		
 	# Add the eval line:
 	my $inline = $window->insert( InputLine =>
 		text => '',
@@ -111,8 +111,8 @@ my $window = Prima::MainWindow->new(
 			  ['', '', kb::Return, \&pressed_enter]
 			, ['', '', kb::Enter, \&pressed_enter]
 			# Ctrl-Shift-Enter runs and goes to the output window
-			, ['', '', kb::Return | km::Ctrl | km::Shift,	sub{pressed_enter(); goto_page 0}	]
-			, ['', '', kb::Enter  | km::Ctrl | km::Shift,	sub{pressed_enter(); goto_page 0}	]
+			, ['', '', kb::Return | km::Ctrl | km::Shift,	sub{pressed_enter(); goto_output}	]
+			, ['', '', kb::Enter  | km::Ctrl | km::Shift,	sub{pressed_enter(); goto_output}	]
 			# Navigation scrolls through the command history
 			, ['', '', kb::Up, sub {set_new_line($current_line - 1)}]
 			, ['', '', kb::Down, sub {set_new_line($current_line + 1)}]
@@ -126,20 +126,12 @@ my $window = Prima::MainWindow->new(
 	$inline->select;
 
 # A dialog box that will be used for opening and saving files:
-my $open_dialog = Prima::OpenDialog-> new(
-	filter => [
-		['Perl scripts' => '*.pl'],
-		['PDL modules' => '*.pdl'],
-		['Perl modules' => '*.pm'],
-		['POD documents' => '*.pod'],
-		['All' => '*']
-	]
-);
+my $open_dialog = Prima::OpenDialog-> new(filter => \@file_extension_list);
 
 
-# The list of default widgets for each page. Help and output default to
-# the evaluation line:
-my @default_widget_for = ($inline, $inline);
+# The list of default widgets for each page. Output defaults to the evaluation
+# line:
+my @default_widget_for = ($inline);
 
 sub goto_page {
 	my $page = shift;
@@ -150,6 +142,7 @@ sub goto_page {
 		$notebook->pageIndex($page);
 		$default_widget_for[$page]->select;
 	}
+	# Silently ignore if the page does not exist
 }
 
 sub goto_next_page {
@@ -158,12 +151,32 @@ sub goto_next_page {
 sub goto_prev_page {
 	goto_page $notebook->pageIndex - 1;
 }
+sub goto_output {
+	goto_page 0;
+}
+sub get_help {
+	# There can be multiple help windows open, so don't try to display the
+	# 'current' help window, since that is not well defined. Instead, open a
+	# new one with this application's documentation:
+	my $module = shift;
+	if ($module) {
+		# If a module name was passed, open it:
+		print "Opening the documentation for $module";
+		$::application->open_help($module);
+	}
+	else {
+		# Otherwise, open this application's documentation:
+		$::application->open_help($app_filename);
+	}
+	# Make sure the the opened help is visible
+	$::application->get_active_window->bring_to_front;
+}
 
 # Add some accelerator keys to the window for easier navigaton:
 $window->accelItems([
 	  ['', '', km::Ctrl | ord 'i',	sub {$inline->select}	]	# input line
-	, ['', '', km::Alt  | ord '1',		sub {goto_page 0}	]	# output page
-	, ['', '', km::Ctrl | ord 'h',		sub {goto_page 1}	]	# help
+	, ['', '', km::Alt  | ord '1',		sub {goto_output}	]	# output page
+	, ['', '', km::Ctrl | ord 'h',		sub {get_help}		]	# help
 	, ['', '', km::Alt  | ord '2',		sub {goto_page 1}	]	# help (page 2)
 	, ['', '', km::Alt  | ord '3',		sub {goto_page 2}	]	# page 3
 	, ['', '', km::Alt  | ord '4',		sub {goto_page 3}	]	# .
@@ -179,10 +192,6 @@ $window->accelItems([
 	, ['', '', km::Ctrl | ord 'o',		sub {open_file()}	]	# open file
 	, ['', '', km::Ctrl | ord 'S',		sub {save_file()}	]	# save file
 ]);
-
-sub new_help {
-	
-}
 
 # Creates a new text-editor tab and selects it
 sub new_file {
@@ -210,12 +219,15 @@ sub new_file {
 	# Update the accelerators.
 	my $accTable = $page_widget->accelTable;
 
-	# Allow Ctrl Enter to execute:
+	# Add some functions to the accelerator table
 	$accTable->insert([
-		  ['', '', kb::Return 	| km::Ctrl | km::Shift,	sub{run_file(); goto_page 0}	]
-		, ['', '', kb::Enter  	| km::Ctrl | km::Shift,	sub{run_file(); goto_page 0}	]
-		, ['', '', kb::Return 	| km::Ctrl,  sub{run_file()}				]
+		# Ctrl-Enter runs the file
+		  ['', '', kb::Return 	| km::Ctrl,  sub{run_file()}				]
 		, ['', '', kb::Enter  	| km::Ctrl,  sub{run_file()}				]
+		# Ctrl-Shift-Enter runs the file and selects the output window
+		, ['', '', kb::Return 	| km::Ctrl | km::Shift,	sub{run_file(); goto_output}	]
+		, ['', '', kb::Enter  	| km::Ctrl | km::Shift,	sub{run_file(); goto_output}	]
+		# Ctrl-PageUp/PageDown don't work by default, so add them, too:
 		, ['', '', kb::PageUp 	| km::Ctrl,  \&goto_prev_page				]
 		, ['', '', kb::PageDown | km::Ctrl,  \&goto_next_page				]
 		], '', 0);
@@ -238,28 +250,25 @@ sub close_file {
 		# Check that a valid value is used:
 		if ($to_close == 0) {
 			print "You cannot remove the output tab\n";
-			goto_page 0;
-			return;
-		}
-		elsif ($to_close == 1) {
-			print "You cannot remove the Help tab\n";
-			goto_page 0;
+			goto_output;
 			return;
 		}
 		
 		# Close the tab
-		carp ("Not checking if the file needs to be saved. This should be fixed.");
+		print "Not checking if the file needs to be saved, on line ", __LINE__
+				, ". This should be fixed.";
 		$notebook->{notebook}->delete_page($to_close);
 		splice @tabs, $to_close, 1;
 		splice @default_widget_for, $to_close, 1;
 	}
 	else {
 		# Provided a name. Close all the tags with the given name:
-		my $i = 2;
+		my $i = 1;	# Start at tab #2, so they can't close the Output tab
 		$to_close = qr/$to_close/ unless ref($to_close) eq 'Regex';
 		while ($i < @tabs) {
 			if ($tabs[$i] eq $to_close) {
-				carp ("Not checking if the file needs to be saved. This should be fixed.");
+				print "Not checking if the file needs to be saved, on line "
+						, __LINE__, ". This should be fixed.";
 				$notebook->{notebook}->delete_page($_);
 				splice @default_widget_for, $i, 1;
 				splice @tabs, $i, 1;
@@ -270,7 +279,7 @@ sub close_file {
 	}
 	
 	# Update the tab numbering:
-	$tabs[$_-1] =~ s/\d+$/$_/ for (3..@tabs);
+	$tabs[$_-1] =~ s/\d+$/$_/ for (2..@tabs);
 	
 	# Finally, set the new, final names and select the default widget:
 	$notebook->tabs(\@tabs);
@@ -280,7 +289,7 @@ sub close_file {
 # Opens a file (optional first argument, or uses a dialog box) and imports it
 # into the current tab, or a new tab if they're at the output or help tabs:
 sub open_file {
-	my ($file) = @_;
+	my ($file, $dont_warn) = @_;
 	my $page = $notebook->pageIndex;
 	
 	# Get the filename with a dialog if they didn't specify one:
@@ -293,14 +302,16 @@ sub open_file {
 	
 	# Extract the name and create a tab:
 	(undef,undef,my $name) = File::Spec->splitpath( $file );
-	if ($page < 2) {
+	if ($page == 0) {
 		new_file ($name);
 	}
 	else {
 		name($name);
 	}
 	
-	carp("** Need to check the contents of the current tab before overwriting");
+	print "Need to check the contents of the current tab before overwriting, "
+			, "on line ", __LINE__, ". This should be fixed."
+			unless $page == 0 or $dont_warn;
 	
 	# Load the contents of the file into the tab:
     open( my $fh, $file ) or return print "Couldn't open $file";
@@ -314,31 +325,18 @@ sub open_file {
 # A file-opening function for initialization scripts
 sub init_file {
 	new_file;
-	open_file @_;
+	open_file @_, 1;
 }
 
 sub save_file {
 	my $page = $notebook->pageIndex;
-	if ($page < 2) {
-		print "Go to the tab with the contents you want to save before calling this";
-		goto_page 0;
-		return;
-	}
 	
 	# Get the filename as an argument or from a save-as dialog. This would work
 	# better if it got instance data for the filename from the tab itself, but
 	# that would require subclassing the editor, which I have not yet tried.
 	my $filename = shift;
 	unless ($filename) {
-		my $save_dialog = Prima::SaveDialog-> new(
-			filter => [
-				['Perl scripts' => '*.pl'],
-				['PDL modules' => '*.pdl'],
-				['Perl modules' => '*.pm'],
-				['POD documents' => '*.pod'],
-				['All' => '*']
-			]
-		);
+		my $save_dialog = Prima::SaveDialog-> new(filter => \@file_extension_list);
 		# Return if they cancel out:
 		return unless $save_dialog->execute;
 		# Otherwise get the filename:
@@ -347,7 +345,17 @@ sub save_file {
 	
 	# Open the file and save everything to it:
 	open my $fh, '>', $filename;
-	my $textRef = $default_widget_for[$notebook->pageIndex]->textRef;
+	my $textRef;
+	# working here - this could be done better (once default widgets are
+	# actually subclassed, then this could be extended so that graphs could save
+	# themselves, etc. In that case, the evaluation line would save the text of
+	# output, since it is the default widget for the output tab.)
+	if ($page == 0) {
+		$textRef = $output->textRef;
+	}
+	else {
+		$textRef = $default_widget_for[$notebook->pageIndex]->textRef;
+	}
 	print $fh $$textRef;
 	close $fh;
 }
@@ -357,7 +365,6 @@ sub run_file {
 	my $page = shift || $notebook->pageIndex + 1;
 	$page--;	# user starts counting at 1, not 0
 	croak("Can't run output page!") if $page == 0;
-	croak("Can't run help page!") if $page == 1;
 	
 	# Get the text from the multiline and run it:
 	my $text = $default_widget_for[$page]->text;
@@ -384,7 +391,7 @@ sub run_file {
 		print $@;
 		print '-' x length $header;
 		$@ = '';
-		goto_page 0;
+		goto_output;
 	}
 }
 
@@ -397,9 +404,13 @@ sub name {
 	$notebook->tabs($tabs);
 }
 
-# Changes the contents of the evaluation line to the one stored in the history:
+# Changes the contents of the evaluation line to the one stored in the history.
+# This is used for the up/down key callbacks for the evaluation line.
 sub set_new_line {
 	my $requested_line = shift;
+	
+	# Get the current character offset:
+	my $curr_offset = $inline->charOffset;
 	
 	# Save changes to the current line in history:
 	$history[$current_line] = $inline->text;
@@ -413,22 +424,20 @@ sub set_new_line {
 	# Load the text:
 	$inline->text($history[$requested_line]);
 	
-	# Put the cursor at the end of the line:
-	$inline->charOffset(length $history[$requested_line]);
+	# Put the cursor at the previous offset:
+	$inline->charOffset($curr_offset);
 }
 
 
-# Evaluates the text in the input line
 my $lexicals_allowed = 0;
+sub allow_lexicals { $lexicals_allowed = 1 };
+
+# Evaluates the text in the input line
 my $current_help_topic;
 sub pressed_enter {
-	# They pressed return. First save the contents. If they typed this on the
-	# help page, append 'help' to it:
+	# They pressed return. First extract the contents of the text.
 	my $in_text = $inline->text;
 	
-	$in_text = "help $in_text"
-		if ($notebook->pageIndex == 1 and $in_text !~ /^(help|exit)/);
-
 	# If the user made an error, I will want to go back into the history and
 	# comment out the line, so keep track of it:
 	my $old_current_line = $current_line;
@@ -453,37 +462,50 @@ sub pressed_enter {
 	
 	# Check for the help command. If they just type 'help', show them the
 	# documentation for this application:
-	if ($in_text eq 'help' or $in_text eq 'help help') {
-		$::application->open_help($app_filename);
-#		$pod->load_file($app_filename);
-#		goto_page 1;
-	}
-	# If they want help for a specific module, show that:
-	elsif ($in_text =~ /^help/) {
-		# Select the help tab
-#		goto_page 1;
-		
-		# If they specified a module, open its pod
-		if ($in_text =~ /^help\s+(.+)/) {
-			my $module = $1;
-			print "Opening the documentation for $module";
-			$::application->open_help($module);
-#			$pod->load_file($module);
-		}
+	if ($in_text =~ /^\s*help\s*(.*)/) {
+		get_help($1);
 	}
 	elsif ($in_text =~ /^pdldoc\s+(.+)/) {
-		print `pdldoc $1`;
+		# Run pdldoc and parse its output:
+		my $results = `pdldoc $1`;
+		if ($results =~ /No PDL docs/) {
+			print $results;
+			goto_output;
+		}
+		# If it found output, then extract the module name and the function
+		# and go there:
+		elsif ($results =~ /Module (PDL::[^\s]+)\n\s+(\w+)/) {
+			my $module = $1;
+			my $function = $2;
+			# Show help:
+			get_help("$module/$function");
+		}
+		else {
+			print "Unable to parse the output of pdldoc:";
+			print $results;
+		}
+	}
+	elsif ($in_text =~ /^\s*pdldoc\s*/) {
+		print "Please specify a PDL function about which you want more information";
+		goto_output;
+	}
+	elsif ($in_text =~ /^\s*exit\s*$/) {
+		unlink 'prima-repl.logfile';
+		exit;
 	}
 	else {
 		# A command to be eval'd. Lexical variables don't work, so croak if I
 		# see one. This could probably be handled better.
 		if ($in_text =~ /my/ and not $lexicals_allowed) {
-			$@ = join("\n", "Lexical variables not allowed in the line evaluator"
+			$@ = join(' ', 'It looks to me like you\'re trying to use a lexical variable.'
+					, 'Lexical variables not allowed in the line evaluator'
 					, 'because you cannot get to them after the current line.'
-					, 'To allow lexicals, say $lexicals_allowed = 1');
+					, 'If I\'m wrong, or if you really want to use lexical variables,'
+					, "do this:\n"
+					, "   allow_lexicals; <command-here>"
+					);
 		}
 		else {
-			no strict;
 			$in_text = PDL::NiceSlice->perldlpp($in_text) if ($loaded_PDL);
 			my_eval($in_text);
 		}
@@ -496,49 +518,16 @@ sub pressed_enter {
 			$history[$old_current_line] = $in_text;
 			$history[$last_line - 1] = $in_text;
 			$@ = '';
-			goto_page 0;
+			goto_output;
 		}
 	}
+	$lexicals_allowed = 0
 }
 
 sub my_eval {
-	my $to_run = shift;
 	no strict;
-	eval $to_run;
+	eval $_[0];
 	use strict;
-
-=for later
-	# working here
-	# fork and run
-	my $pid = fork;
-	if ($pid) {
-		# parent here. close the writing filehandle:
-		close $writeme;
-		$writeme = undef
-		
-		# set a timer function to check for info back from the process.
-		
-	}
-	elsif (defined $pid and not $pid) {
-		# child; run the eval and return control:
-		close $readme;
-		
-		eval $to_run;
-		# Send a notification that we're all done:
-		allow_input();
-		close $readme;
-		# always end child processes with an exit:
-		exit;
-	}
-	else {
-		# pipe error; just eval the code and make the process wait:
-		($readme, $writeme) = ();
-		eval $to_run;
-		$inline->enabled(1);
-	}
-
-=cut
-
 }
 
 # A function called from eval'd code and/or the child process that tells the
@@ -562,17 +551,20 @@ sub clear {
 	$output_line_number = 0;
 }
 
-# Useful function to simulate user input (so it gets saved in the history)
+# Useful function to simulate user input. This is useful for initialization
+# scripts when you want to run commands and put them into the command history
 sub simulate_run {
     my $command = shift;
-    # Get the current content of the inline:
+    # Get the current content of the inline and cursor position:
     my $old_text = $inline->text;
+    my $old_offset = $inline->charOffset;
     # Set the content to the new command:
     $inline->text($command);
     # run it:
     pressed_enter();
     # put the original content back on the inline:
     $inline->text($old_text);
+    $inline->charOffset($old_offset);
 }
 
 # Here is a utility function to print to the output window. Both standard output
@@ -634,12 +626,11 @@ package main;
 eval 'require PDL::Version' if not defined $PDL::Version::VERSION;
 
 # Print the opening message:
-print "Welcome to the Prima REPL.";
+print "Welcome to the Prima REPL, version $version.";
 print "Using PDL version $PDL::Version::VERSION" if ($loaded_PDL);
 print ' ';
-print "If you don't know what you're doing, check out the help tab";
-print "by typing 'help' and pressing Enter, or by pressing Ctrl-h or Alt-2";
-print "or Ctrl-PageDown, or by clicking on the help tab with your mouse.";
+print join(' ', 'If you don\'t know what you\'re doing, you can get help by'
+				, 'typing \'help\' and pressing Enter, or by pressing Ctrl-h');
 
 #################################
 # Run any initialization script #
@@ -650,6 +641,10 @@ if (-f 'prima-repl.initrc') {
 }
 
 run Prima;
+# Remove the logfile. This will not happen with a system failure, which means
+# that the logfile is 'saved' only when there was a problem. The special case of
+# the user typing 'exit' at the prompt is handled in pressed_enter().
+unlink 'prima-repl.logfile';
 
 __END__
 
