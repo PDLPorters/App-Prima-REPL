@@ -49,6 +49,14 @@ if (-f 'prima-repl.history') {
 # Set the current and last line to the end of the history:
 $current_line = $last_line = @history;
 
+# An important io function:
+sub say {
+	# Examine the last element of @_:
+	my $last_arg = pop;
+	$last_arg .= "\n" unless $last_arg =~ /\n$/;
+	print (@_, $last_arg);
+}
+
 # Save the last 200 lines in the history file:
 END {
 	open my $fh, '>', 'prima-repl.history';
@@ -111,8 +119,8 @@ my $window = Prima::MainWindow->new(
 			  ['', '', kb::Return, \&pressed_enter]
 			, ['', '', kb::Enter, \&pressed_enter]
 			# Ctrl-Shift-Enter runs and goes to the output window
-			, ['', '', kb::Return | km::Ctrl | km::Shift,	sub{pressed_enter(); goto_output}	]
-			, ['', '', kb::Enter  | km::Ctrl | km::Shift,	sub{pressed_enter(); goto_output}	]
+			, ['', '', kb::Return | km::Ctrl | km::Shift,	sub{ goto_output; pressed_enter()}	]
+			, ['', '', kb::Enter  | km::Ctrl | km::Shift,	sub{ goto_output; pressed_enter()}	]
 			# Navigation scrolls through the command history
 			, ['', '', kb::Up, sub {set_new_line($current_line - 1)}]
 			, ['', '', kb::Down, sub {set_new_line($current_line + 1)}]
@@ -161,7 +169,7 @@ sub get_help {
 	my $module = shift;
 	if ($module) {
 		# If a module name was passed, open it:
-		print "Opening the documentation for $module";
+		say "Opening the documentation for $module";
 		$::application->open_help($module);
 	}
 	else {
@@ -225,8 +233,8 @@ sub new_file {
 		  ['', '', kb::Return 	| km::Ctrl,  sub{run_file()}				]
 		, ['', '', kb::Enter  	| km::Ctrl,  sub{run_file()}				]
 		# Ctrl-Shift-Enter runs the file and selects the output window
-		, ['', '', kb::Return 	| km::Ctrl | km::Shift,	sub{run_file(); goto_output}	]
-		, ['', '', kb::Enter  	| km::Ctrl | km::Shift,	sub{run_file(); goto_output}	]
+		, ['', '', kb::Return 	| km::Ctrl | km::Shift,	\&run_file_with_output	]
+		, ['', '', kb::Enter  	| km::Ctrl | km::Shift,	\&run_file_with_output	]
 		# Ctrl-PageUp/PageDown don't work by default, so add them, too:
 		, ['', '', kb::PageUp 	| km::Ctrl,  \&goto_prev_page				]
 		, ['', '', kb::PageDown | km::Ctrl,  \&goto_next_page				]
@@ -239,6 +247,12 @@ sub new_file {
 	goto_page -1;
 }
 
+sub run_file_with_output {
+	my $current_page = $notebook->pageIndex + 1;
+	goto_output;
+	run_file($current_page);
+}
+
 # closes the tab number, or name if provided, or current if none is supplied
 sub close_file {
 	# Get the desired tab; default to current tab:
@@ -249,13 +263,13 @@ sub close_file {
 		$to_close += $notebook->pageCount if $to_close < 0;
 		# Check that a valid value is used:
 		if ($to_close == 0) {
-			print "You cannot remove the output tab\n";
+			say "You cannot remove the output tab";
 			goto_output;
 			return;
 		}
 		
 		# Close the tab
-		print "Not checking if the file needs to be saved, on line ", __LINE__
+		say "Not checking if the file needs to be saved, on line ", __LINE__
 				, ". This should be fixed.";
 		$notebook->{notebook}->delete_page($to_close);
 		splice @tabs, $to_close, 1;
@@ -267,7 +281,7 @@ sub close_file {
 		$to_close = qr/$to_close/ unless ref($to_close) eq 'Regex';
 		while ($i < @tabs) {
 			if ($tabs[$i] eq $to_close) {
-				print "Not checking if the file needs to be saved, on line "
+				say "Not checking if the file needs to be saved, on line "
 						, __LINE__, ". This should be fixed.";
 				$notebook->{notebook}->delete_page($_);
 				splice @default_widget_for, $i, 1;
@@ -309,12 +323,12 @@ sub open_file {
 		name($name);
 	}
 	
-	print "Need to check the contents of the current tab before overwriting, "
+	say "Need to check the contents of the current tab before overwriting, "
 			, "on line ", __LINE__, ". This should be fixed."
 			unless $page == 0 or $dont_warn;
 	
 	# Load the contents of the file into the tab:
-    open( my $fh, $file ) or return print "Couldn't open $file";
+    open( my $fh, $file ) or return say "Couldn't open $file";
     my $text = do { local( $/ ) ; <$fh> } ;
     # Note that the default widget will always be an Edit object because if the
     # current tab was not an Edit object, a new tab will have been created and
@@ -374,22 +388,20 @@ sub run_file {
 			$text = PDL::NiceSlice->perldlpp($text);
 		}
 		else {
-			print "PDL did not load properly, so I can't apply NiceSlice to your code.";
-			print "Don't be surprised if you get errors...";
+			say "PDL did not load properly, so I can't apply NiceSlice to your code.";
+			say "Don't be surprised if you get errors...";
 		}
 	}
 
-	no strict;
-	eval $text;
-	use strict;
+	my_eval($text);
 
 	# If error, switch to the console and print it to the output:
 	if ($@) {
 		my $tabs = $notebook->tabs;
-		my $header = "----- Error running ", $tabs->[$page], " -----";
-		print $header;
-		print $@;
-		print '-' x length $header;
+		my $header = "----- Error running ". $tabs->[$page]. " -----";
+		say $header;
+		say $@;
+		say '-' x length $header;
 		$@ = '';
 		goto_output;
 	}
@@ -432,6 +444,15 @@ sub set_new_line {
 my $lexicals_allowed = 0;
 sub allow_lexicals { $lexicals_allowed = 1 };
 
+# convenience function for clearing the output:
+my $output_line_number = 0;
+my $output_column = 0;
+sub clear {
+	$output->text('');
+	$output_line_number = 0;
+	$output_column = 0;
+}
+
 # Evaluates the text in the input line
 my $current_help_topic;
 sub pressed_enter {
@@ -443,7 +464,8 @@ sub pressed_enter {
 	my $old_current_line = $current_line;
 	
 	# print this line:
-	print "> $in_text";
+	print "\n" if $output_column != 0;
+	say "> $in_text";
 
 	# Add this line to the current line of the history, if the current line is
 	# not the last line:
@@ -469,7 +491,7 @@ sub pressed_enter {
 		# Run pdldoc and parse its output:
 		my $results = `pdldoc $1`;
 		if ($results =~ /No PDL docs/) {
-			print $results;
+			say $results;
 			goto_output;
 		}
 		# If it found output, then extract the module name and the function
@@ -481,12 +503,12 @@ sub pressed_enter {
 			get_help("$module/$function");
 		}
 		else {
-			print "Unable to parse the output of pdldoc:";
-			print $results;
+			say "Unable to parse the output of pdldoc:";
+			say $results;
 		}
 	}
-	elsif ($in_text =~ /^\s*pdldoc\s*/) {
-		print "Please specify a PDL function about which you want more information";
+	elsif ($in_text =~ /^\s*pdldoc\s*$/) {
+		say "Please specify a PDL function about which you want more information";
 		goto_output;
 	}
 	elsif ($in_text =~ /^\s*exit\s*$/) {
@@ -512,7 +534,7 @@ sub pressed_enter {
 	
 		# If error, print that to the output
 		if ($@) {
-			print $@;
+			say $@;
 			# Add comment hashes to the beginning of the erroneous lines:
 			$in_text = "#$in_text";
 			$history[$old_current_line] = $in_text;
@@ -525,9 +547,16 @@ sub pressed_enter {
 }
 
 sub my_eval {
+	# Gray the line entry:
+	$inline->enabled(0);
+	# Make sure any updates hit the screen before we get going:
+	$::application->yield;
+	# Run the stuff to be run:
 	no strict;
 	eval $_[0];
 	use strict;
+	# Re-enable input:
+	$inline->enabled(1);
 }
 
 # A function called from eval'd code and/or the child process that tells the
@@ -542,14 +571,8 @@ sub my_eval {
 $|++;
 
 # Convenience function for PDL folks.
-sub p {	print @_ }
-
-# convenience function for clearing the output:
-my $output_line_number = 0;
-sub clear {
-	$output->text('');
-	$output_line_number = 0;
-}
+# working here - change this to say
+sub p {	say @_ }
 
 # Useful function to simulate user input. This is useful for initialization
 # scripts when you want to run commands and put them into the command history
@@ -569,22 +592,60 @@ sub simulate_run {
 
 # Here is a utility function to print to the output window. Both standard output
 # and standard error are later tied to printing to this interface, so you can
-# just use 'print' in all your code and it'll go to this.
+# just use 'print' or 'say' in all your code and it'll go to this.
 
 sub outwindow {
-	# Join the arguments and split them at the newlines:
-	my @lines = split /\n/, join('', @_);
-	# Remove some weird/annoying error messages:
+	# Join the arguments and split them at the newlines and carriage returns:
+	my @lines = split /([\n\r])/, join('', @_);
+	# Remove useless parts of error messages (which refer to lines in this code)
 	s/ \(eval \d+\)// for @lines;
-	# Add the lines and keep track of the output line number:
-	$output->insert_line($output_line_number, @lines);
-	$output_line_number += @lines;
-	
-	# Add the lines to the logfile
+	# Open the logfile, which I'll print to simultaneously:
 	open my $logfile, '>>', 'prima-repl.logfile';
-	print $logfile $_, "\n" foreach @lines;
+	# Go through each line and carriage return, overwriting where appropriate:
+	foreach(@lines) {
+		# If it's a carriage return, set the current column to zero:
+		if (/\r/) {
+			$output_column = 0;
+			print $logfile "\\r\n";
+		}
+		# If it's a newline, increment the output line and set the column to
+		# zero:
+		elsif (/\n/) {
+			$output_column = 0;
+			$output_line_number++;
+			print $logfile "\n";
+		}
+		# Otherwise, add the text to the current line, starting at the current
+		# column:
+		else {
+			my $current_text = $output->get_line($output_line_number);
+			# If the current line is blank, set the text to $_:
+			if (not $current_text) {
+				$current_text = $_;
+			}
+			# Or, if the replacement text exceeds the current line's content,
+			elsif (length($current_text) < length($_) + $output_column) {
+				# Set the current line to contain everything up to the current
+				# column, and append the next text:
+				$current_text = substr($current_text, 0, $output_column) . $_;
+			}
+			# Or, replace the current line's text with the next text:
+			else {
+				substr($current_text, $output_column, length($_), $_);
+			}
+			$output->delete_line($output_line_number);
+			$output->insert_line($output_line_number, $current_text);
+			# increase the current column:
+			$output_column += length($_);
+		}
+	}
+	
+	# close the logfile:
 	close $logfile;
 	
+	# Let the application update itself:
+	$::application->yield;
+
 	# I'm not super-enthused with manually putting the cursor at the end of
 	# the text, or with forcing the scrolling. I'd like to have some way to
 	# determine if the text was already at the bottom, in which case I would
@@ -605,14 +666,12 @@ sub TIEHANDLE { return bless geniosym, __PACKAGE__ }
 our $OLD_STDOUT;
 sub PRINT {
     shift;
-    no strict 'refs';
     main::outwindow(@_)
 }
 
 sub PRINTF {
 	shift;
 	my $to_print = sprintf(@_);
-    no strict 'refs';
 	main::outwindow(@_);
 }
 
@@ -626,17 +685,17 @@ package main;
 eval 'require PDL::Version' if not defined $PDL::Version::VERSION;
 
 # Print the opening message:
-print "Welcome to the Prima REPL, version $version.";
-print "Using PDL version $PDL::Version::VERSION" if ($loaded_PDL);
-print ' ';
-print join(' ', 'If you don\'t know what you\'re doing, you can get help by'
+say "Welcome to the Prima REPL, version $version.\n";
+say "Using PDL version $PDL::Version::VERSION\n" if ($loaded_PDL);
+print "\n";
+say join(' ', 'If you don\'t know what you\'re doing, you can get help by'
 				, 'typing \'help\' and pressing Enter, or by pressing Ctrl-h');
 
 #################################
 # Run any initialization script #
 #################################
 if (-f 'prima-repl.initrc') {
-	print "Running initialization script";
+	say "Running initialization script";
 	do 'prima-repl.initrc';
 }
 
