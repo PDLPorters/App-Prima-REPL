@@ -52,6 +52,11 @@ $current_line = $last_line = @history;
 
 # An important io function:
 sub say {
+	# print a newline if nothing is provided.
+	if (@_ == 0) {
+		print "\n";
+		return;
+	}
 	# Examine the last element of @_:
 	my $last_arg = pop;
 	$last_arg .= "\n" unless $last_arg =~ /\n$/;
@@ -427,16 +432,6 @@ sub run_file {
 	
 	# Get the text from the multiline and run it:
 	my $text = $default_widget_for[$page]->text;
-	# Process the text with NiceSlice if they try to use it:
-	if ($text =~ /use PDL::NiceSlice/) {
-		if ($loaded_PDL) {
-			$text = PDL::NiceSlice->perldlpp($text);
-		}
-		else {
-			say "PDL did not load properly, so I can't apply NiceSlice to your code.";
-			say "Don't be surprised if you get errors...";
-		}
-	}
 
 	my_eval($text);
 
@@ -592,16 +587,33 @@ sub pressed_enter {
 }
 
 sub my_eval {
+	my $text = shift;
 	# Gray the line entry:
 	$inline->enabled(0);
+	# replace the entry text with the text 'working...' and save the old stuff
+	my $old_text = $inline->text;
+	$inline->text('working ...');
+	
+	# Process the text with NiceSlice if they try to use it:
+	if ($text =~ /use PDL::NiceSlice/) {
+		if ($loaded_PDL) {
+			$text = PDL::NiceSlice->perldlpp($text);
+		}
+		else {
+			say "PDL did not load properly, so I can't apply NiceSlice to your code.";
+			say "Don't be surprised if you get errors...";
+		}
+	}
+	
 	# Make sure any updates hit the screen before we get going:
 	$::application->yield;
 	# Run the stuff to be run:
 	no strict;
-	eval $_[0];
+	eval $text;
 	use strict;
 	# Re-enable input:
 	$inline->enabled(1);
+	$inline->text($old_text);
 }
 
 # A function called from eval'd code and/or the child process that tells the
@@ -739,10 +751,22 @@ say join(' ', 'If you don\'t know what you\'re doing, you can get help by'
 #################################
 # Run any initialization script #
 #################################
-if (-f 'prima-repl.initrc') {
-	say "Running initialization script";
-	do 'prima-repl.initrc';
+sub redo_initrc {
+	if (-f 'prima-repl.initrc') {
+		say "Running initialization script";
+		# Load the init script and send it to 
+		open my $fh, '<', 'prima-repl.initrc';
+		my $text = do { local( $/ ) ; <$fh> };
+		my_eval($text);
+		print "Errors encountered running the initialization script:\n$@\n"
+			if $@;
+		$@ = '';
+	}
+	else {
+		say "No initialization script found";
+	}
 }
+redo_initrc if -f 'prima-repl.initrc';
 
 run Prima;
 # Remove the logfile. This will not happen with a system failure, which means
