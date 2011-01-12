@@ -11,6 +11,7 @@ use Prima::InputLine;
 use Prima::Edit;
 use Prima::PodView;
 use Prima::FileDialog;
+use Prima::ImageViewer;
 use Carp;
 use File::Spec;
 use FindBin;
@@ -242,6 +243,50 @@ sub new_file {
 
 	# Make the editor the default widget for this page.
 	push @default_widget_for, $page_widget;
+	
+	# Go to this page:
+	goto_page -1;
+}
+
+sub open_image {
+	my $page_no = $notebook->pageCount;
+	my $name = shift;
+	if (not defined $name) {
+		say "You must provide a filename to open.";
+		return;
+	}
+	if (not -f $name) {
+		say "Could not open file $name.";
+		return;
+	}
+	
+	# Open the image:
+	my $image = Prima::Image-> load($name);
+	
+	# Add the tab number to the name:
+	$name .= ', ' if $name;
+	$name .= '#' . ($page_no + 1);
+
+	# Add this tab to the list:
+	my @tabs = @{$notebook->tabs};
+	$notebook->tabs([@tabs, $name]);
+	# Add this tab to the notebook:
+	my $page_widget = $notebook->insert_to_page(-1, ImageViewer =>
+		image => $image,
+		allignment => ta::Center,
+		vallignment => ta::Center,
+		pack => { fill => 'both', expand => 1, padx => $padding, pady => $padding },
+		accelItems => [
+		# F5 refreshes the image
+			['', '', kb::F1, sub {
+				print "args are: [[", join(']],[[', @_), "]]\n";
+#				$image = Prima::Image->load($name);
+
+			}]],
+	);
+	
+	# Make inline the default widget for this page.
+	push @default_widget_for, $inline;
 	
 	# Go to this page:
 	goto_page -1;
