@@ -498,10 +498,12 @@ my $current_help_topic;
 sub pressed_enter {
 	# They pressed return. First extract the contents of the text.
 	my $in_text = $inline->text;
+	# Remove the endlines, if present:
+	$in_text =~ s/\n//g;
 	
 	# If the user made an error, I will want to go back into the history and
 	# comment out the line, so keep track of it:
-	my $old_current_line = $current_line;
+#	my $old_current_line = $current_line;
 	
 	# print this line:
 	print "\n" if $output_column != 0;
@@ -509,7 +511,7 @@ sub pressed_enter {
 
 	# Add this line to the current line of the history, if the current line is
 	# not the last line:
-	$history[$current_line] = $in_text if $current_line != $last_line;
+#	$history[$current_line] = $in_text if $current_line != $last_line;
 	# Add this line to the last line of the history if it's not a repeat:
 	if (@history == 0 or $history[$last_line - 1] ne $in_text) {
 		$history[$last_line] = $in_text ;
@@ -577,7 +579,7 @@ sub pressed_enter {
 			say $@;
 			# Add comment hashes to the beginning of the erroneous lines:
 			$in_text = "#$in_text";
-			$history[$old_current_line] = $in_text;
+#			$history[$old_current_line] = $in_text;
 			$history[$last_line - 1] = $in_text;
 			$@ = '';
 			goto_output;
