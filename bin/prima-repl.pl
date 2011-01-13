@@ -457,15 +457,20 @@ sub name {
 }
 
 # Changes the contents of the evaluation line to the one stored in the history.
-# This is used for the up/down key callbacks for the evaluation line.
+# This is used for the up/down key callbacks for the evaluation line. The
+# current_revisions array holds the revisions to the history, and it is reset
+# every time the user runs the evaluation line.
+my @current_revisions;
 sub set_new_line {
 	my $requested_line = shift;
 	
 	# Get the current character offset:
 	my $curr_offset = $inline->charOffset;
+	# Note the end-of-line position by zero:
+	$curr_offset = 0 if $curr_offset == length($inline->text);
 	
-	# Save changes to the current line in history:
-	$history[$current_line] = $inline->text;
+	# Save changes to the current line in the revision list:
+	$current_revisions[$last_line - $current_line] = $inline->text;
 	
 	# make sure the requested line makes sense:
 	$requested_line = 0 if $requested_line < 0;
@@ -473,11 +478,14 @@ sub set_new_line {
 	
 	$current_line = $requested_line;
 	
-	# Load the text:
-	$inline->text($history[$requested_line]);
+	# Load the text using the Orcish Maneuver:
+	my $new_text = $current_revisions[$last_line - $current_line]
+						//= $history[$requested_line];
+	$inline->text($new_text);
 	
-	# Put the cursor at the previous offset:
-	$inline->charOffset($curr_offset);
+	# Put the cursor at the previous offset. However, if the previous offset
+	# was zero, put the cursor at the end of the line:
+	$inline->charOffset($curr_offset || length($new_text));
 }
 
 
@@ -501,17 +509,13 @@ sub pressed_enter {
 	# Remove the endlines, if present:
 	$in_text =~ s/\n//g;
 	
-	# If the user made an error, I will want to go back into the history and
-	# comment out the line, so keep track of it:
-#	my $old_current_line = $current_line;
+	# Reset the current collection of revisions:
+	@current_revisions = ();
 	
 	# print this line:
 	print "\n" if $output_column != 0;
 	say "> $in_text";
 
-	# Add this line to the current line of the history, if the current line is
-	# not the last line:
-#	$history[$current_line] = $in_text if $current_line != $last_line;
 	# Add this line to the last line of the history if it's not a repeat:
 	if (@history == 0 or $history[$last_line - 1] ne $in_text) {
 		$history[$last_line] = $in_text ;
@@ -570,17 +574,18 @@ sub pressed_enter {
 					);
 		}
 		else {
-			$in_text = PDL::NiceSlice->perldlpp($in_text) if ($loaded_PDL);
-			my_eval($in_text);
+			my $text_to_eval = $in_text;
+			# This appears to be giving trouble. Slices do not appear to be
+			# evaluated correctly. working here
+			$text_to_eval = PDL::NiceSlice->perldlpp($in_text) if ($loaded_PDL);
+			my_eval($text_to_eval);
 		}
 	
 		# If error, print that to the output
 		if ($@) {
 			say $@;
-			# Add comment hashes to the beginning of the erroneous lines:
-			$in_text = "#$in_text";
-#			$history[$old_current_line] = $in_text;
-			$history[$last_line - 1] = $in_text;
+			# Add comment hashes to the beginning of the erroneous line:
+			$history[$last_line - 1] = "#$in_text";
 			$@ = '';
 			goto_output;
 		}
