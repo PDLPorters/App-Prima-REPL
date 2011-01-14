@@ -7,7 +7,6 @@ use Prima::Buttons;
 use Prima::Notebooks;
 use Prima::ScrollWidget;
 use Prima::Application;
-use Prima::InputLine;
 use Prima::Edit;
 use Prima::PodView;
 use Prima::FileDialog;
@@ -32,23 +31,211 @@ BEGIN {
 my $app_filename = File::Spec->catfile($FindBin::Bin, $FindBin::Script);
 my $version = 0.1;
 
-##########################
-# Initialize the history #
-##########################
-my @history;
-my $current_line = 0;
-my $last_line = 0;
+##########################################################
+# Prima::Ex::InputHistory: a history-tracking input line #
+##########################################################
+package Prima::Ex::InputHistory;
+use base 'Prima::InputLine';
 
-if (-f 'prima-repl.history') {
-	open my $fh, '<', 'prima-repl.history';
-	while (<$fh>) {
-		chomp;
-		push @history, $_;
+# Add a new notification_type for each of on_Enter and on_Evaluate. The first
+# should be set with hooks that process and remove any text that needs to be
+# cleaned before the eval stage. In other words, if you want to define commands
+# that do not parse as a function in Perl, add it as a hook under on_Enter. The
+# best examples I can think of, which also serve to differentiate between the
+# two needs, are NiceSlice processing, and processing the help command. To make
+# help work as a bona-fide function, you would have to surround your topic with
+# quotes:
+#   help 'PDL::IO::FastRaw'
+# That's ugly. It would be much nicer to avoid the hooks, if possible, with
+# something like this:
+#   help PDL::IO::FastRaw
+# That's the kinda thing you would handle with an on_Enter hook. After the help
+# function handles that sort of thing, it then calles the clear_event() method
+# on the InputHistory object. On the other hand, NiceSlice parsing will modify
+# the contents of the evaluation, but not call clear_event because it wants the
+# contents of the text to be passed to the evaluation.
+#
+# If the event is properly handled by one of the hooks, the hook should call the
+# clear_event() method on this object.
+{
+	# Keep the notifications hash in its own lexically scoped block so that
+	# other's can't easily mess with it.
+	my %notifications = (
+		%{Prima::InputLine-> notification_types()},
+		Enter => nt::Request,
+		Evaluate => nt::Action,
+	);
+	
+	sub notification_types { return \%notifications }
+}
+
+# When issuing on_Enter, check for the return value. If it was 1, that means
+# the text was handled and clear_event was called. In that case, I do not need
+# to issue the on_Run event since the text was already handled.
+
+# This has the standard profile of an InputLine widget, except that it knows
+# about history files. This sets the default history file:
+sub profile_default
+{
+	my %def = %{$_[ 0]-> SUPER::profile_default};
+	
+	# These lines are taken from the Prima exampled called 'editor'
+	my @accelItems = @{$def{accelItems}};
+	my @acc = (
+		# Navigation scrolls through the command history
+		  ['Previous Line', 'Up', kb::Up, sub {$_[0]->move_line(-1)}]
+		, ['Next Line', 'Down', kb::Down, sub {$_[0]->move_line(1)}]
+		# Note that the values of 10 here are purely symbolic; the function
+		# actually refers to self's pageLines property when it sees +-10
+		, ['Earlier Lines', 'Page Up', kb::PageUp, sub {$_[0]->move_line(-10)}]
+		, ['Later Lines', 'Page Down', kb::PageDown, sub {$_[0]->move_line(10)}]
+		# Enter runs the line
+		  ['Run', 'Return', kb::Return, sub {$_[0]->pressed_enter}]
+		, ['Run', 'Enter', kb::Enter, sub {$_[0]->pressed_enter}]
+	);
+	splice( @accelItems, -1, 0, @acc);
+	return {
+		%def,
+		accelItems => \@accelItems,
+	}
+	
+	# Now, modify the accelerator table:
+	$self->accelItems [
+	];
+
+	return {
+		%def,
+		fileName => '.prima-repl.history',
+		pageLines => 10,		# lines to 'scroll' with pageup/pagedown
+		historyLength => 200,	# total number of lines to save to disk
+	}
+}
+
+# Changes the contents of the evaluation line to the one stored in the history.
+# This is used for the up/down key callbacks for the evaluation line. The
+# currentRevisions array holds the revisions to the history, and it is reset
+# every time the user runs the evaluation line.
+sub move_line {
+	my ($self, $requested_move) = shift;
+	
+	# Set the move to the pageLines number of lines if 10/-10 was requested:
+	$requested_move = $self->{pageLines} if $requested_move == 10;
+	$requested_move = -$self->{pageLines} if $requested_move == -10;
+	
+	# Determine the requested line:
+	my $requested_line = $self->{currentLine} + $requested_move;
+	
+	# Get the current character offset:
+	my $curr_offset = $self->charOffset;
+	# Note the end-of-line position by zero:
+	$curr_offset = 0 if $curr_offset == length($self->text);
+	
+	# Save changes to the current line in the revision list:
+	$self->$current_revisions->[$last_line - $current_line] = $self->text;
+	
+	# make sure the requested line makes sense:
+	$requested_line = 0 if $requested_line < 0;
+	$requested_line = $self->{lastLine} if $requested_line > $self->{lastLine};
+	
+	$self->{currentLine} = $requested_line;
+	
+	# Load the text using the Orcish Maneuver:
+	my $new_text = $self->{currentRevisions}->[$self->{lastLine} - $self->{currentLine}]
+						//= $self->{currentRevisions}->[$requested_line];
+	$self->text($new_text);
+	
+	# Put the cursor at the previous offset. However, if the previous offset
+	# was zero, put the cursor at the end of the line:
+	$self->charOffset($curr_offset || length($new_text));
+}
+
+sub Evaluate {
+	# Issues the on_Evaluate notification. I'm not quite sure what the default
+	# evaluation should do.
+}
+
+sub Enter {
+	# Issues the on_Enter notifcation
+}
+
+sub on_enter {
+	# default code for on_enter goes here
+	# working here - import this from below
+}
+
+# The class properties. Template code for these was taken from Prima::Object's
+# name example property code:
+sub fileName {
+	return $_[0]->{fileName} unless $#_;
+	$_[0]->{fileName} = $_[1];
+}
+sub pageLines {
+	return $_[0]->{pageLines} unless $#_;
+	$_[0]->{pageLines} = $_[1];
+}
+sub historyLength {
+	return $_[0]->{historyLength} unless $#_;
+	$_[0]->{historyLength} = $_[1];
+}
+
+# This stage initializes the inputline. I believe this is the appropriate stage
+# for (1) setting the properties above and (2) loading the history file data.
+sub init {
+	my $self = shift;
+	my %profile = $self->SUPER::init(@_);
+	my $fileName = $self->{fileName} = $profile{fileName};
+	$self->{pageLines} = $profile{pageLines};
+	$self->{historyLength} = $profile{historyLength};
+	
+	# Open the file and set up the other internal data:
+	my @history;
+	if (-f $fileName) {
+		open my $fh, '<', $fileName;
+		while (<$fh>) {
+			chomp;
+			push @history, $_;
+		}
+		close $fh;
+	}
+
+	# Store the history, as well as various line indicators, for later retrieval:
+	$self->{currentLine} = @history;	# *length* of @history
+	$self->{lastLine} = @history;		# *length* of @history
+	$self->{history} = \@history;		# ref to history
+	$self->{currentRevisions} = [];		# no current revisions yet
+
+	return %profile;
+}
+
+# This stage pretty much does away with the object. I want to save the results
+# to the history file as a last step before going down. Note that the super's
+# done function is called *after* this has exectued:
+sub done {
+	my $self = shift;
+	
+	# Save the last N lines in the history file:
+	open my $fh, '>', $self->{fileName};
+	# I want to save the *last* 200 lines, so I don't necessarily start at
+	# the first entry in the history:
+	my $offset = 0;
+	my @history = @{$self->$history};
+	my $historyLength = $self->{historyLength};
+	$offset = @history - $historyLength if (@history > $historyLength);
+	while ($offset < @history) {
+		print $fh $history[$offset++], "\n";
 	}
 	close $fh;
+	
+	# All done. Call the super's done function:
+	$self->SUPER::done;
 }
-# Set the current and last line to the end of the history:
-$current_line = $last_line = @history;
+
+
+#########################
+# Main Application Code #
+#########################
+
+package main;
 
 # An important io function:
 sub say {
@@ -61,18 +248,6 @@ sub say {
 	my $last_arg = pop;
 	$last_arg .= "\n" unless $last_arg =~ /\n$/;
 	print (@_, $last_arg);
-}
-
-# Save the last 200 lines in the history file:
-END {
-	open my $fh, '>', 'prima-repl.history';
-	# Only store the last 200:
-	my $offset = 0;
-	$offset = @history - 200 if (@history > 200);
-	while ($offset < @history) {
-		print $fh $history[$offset++], "\n";
-	}
-	close $fh;
 }
 
 my @file_extension_list = (
@@ -96,7 +271,7 @@ my $window = Prima::MainWindow->new(
 	text => 'Prima REPL',
 	size => [600, 600], 
 );
-	# Add a notbook with output and help tabs:
+	# Add a notbook with output tab:
 	my $notebook = $window->insert(TabbedScrollNotebook =>
 		pack => { fill => 'both', expand => 1, padx => $padding, pady => $padding },
 		tabs => ['Output'],
@@ -121,17 +296,9 @@ my $window = Prima::MainWindow->new(
 		text => '',
 		pack => {fill => 'both', after => $notebook, padx => $padding, pady => $padding},
 		accelItems => [
-			# Enter runs the line
-			  ['', '', kb::Return, \&pressed_enter]
-			, ['', '', kb::Enter, \&pressed_enter]
 			# Ctrl-Shift-Enter runs and goes to the output window
-			, ['', '', kb::Return | km::Ctrl | km::Shift,	sub{ goto_output; pressed_enter()}	]
-			, ['', '', kb::Enter  | km::Ctrl | km::Shift,	sub{ goto_output; pressed_enter()}	]
-			# Navigation scrolls through the command history
-			, ['', '', kb::Up, sub {set_new_line($current_line - 1)}]
-			, ['', '', kb::Down, sub {set_new_line($current_line + 1)}]
-			, ['', '', kb::PageUp, sub {set_new_line($current_line - 10)}]
-			, ['', '', kb::PageDown, sub {set_new_line($current_line + 10)}]
+			, ['', '', kb::Return | km::Ctrl | km::Shift,	sub{ goto_output; $_[0]->pressed_enter()}	]
+			, ['', '', kb::Enter  | km::Ctrl | km::Shift,	sub{ goto_output; $_[0]->pressed_enter()}	]
 			# Ctrl-i selects the default widget (the editor for edit tabs)
 			, ['', '', km::Ctrl | ord 'i', sub {goto_page $notebook->pageIndex}]
 		],
@@ -454,38 +621,6 @@ sub name {
 	my $tabs = $notebook->tabs;
 	$tabs->[$page - 1] = "$name, #$page";
 	$notebook->tabs($tabs);
-}
-
-# Changes the contents of the evaluation line to the one stored in the history.
-# This is used for the up/down key callbacks for the evaluation line. The
-# current_revisions array holds the revisions to the history, and it is reset
-# every time the user runs the evaluation line.
-my @current_revisions;
-sub set_new_line {
-	my $requested_line = shift;
-	
-	# Get the current character offset:
-	my $curr_offset = $inline->charOffset;
-	# Note the end-of-line position by zero:
-	$curr_offset = 0 if $curr_offset == length($inline->text);
-	
-	# Save changes to the current line in the revision list:
-	$current_revisions[$last_line - $current_line] = $inline->text;
-	
-	# make sure the requested line makes sense:
-	$requested_line = 0 if $requested_line < 0;
-	$requested_line = $last_line if $requested_line > $last_line;
-	
-	$current_line = $requested_line;
-	
-	# Load the text using the Orcish Maneuver:
-	my $new_text = $current_revisions[$last_line - $current_line]
-						//= $history[$requested_line];
-	$inline->text($new_text);
-	
-	# Put the cursor at the previous offset. However, if the previous offset
-	# was zero, put the cursor at the end of the line:
-	$inline->charOffset($curr_offset || length($new_text));
 }
 
 
