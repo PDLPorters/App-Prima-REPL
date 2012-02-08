@@ -634,6 +634,8 @@ sub open_file {
 	
 	# Extract the name and create a tab:
 	(undef,undef,my $name) = File::Spec->splitpath( $file );
+	# working here - make this smarter so it calls new_file for anything that's
+	# not an edit buffer.
 	if ($page == 0) {
 		new_file($name);
 	}
