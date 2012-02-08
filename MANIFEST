@@ -1,0 +1,5 @@
+bin/prima-repl
+Build.PL
+lib/App/Prima/REPL.pm
+lib/PrimaX/InputHistory.pm
+MANIFEST			This list of files

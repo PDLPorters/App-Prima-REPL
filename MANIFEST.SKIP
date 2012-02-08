@@ -1,0 +1,16 @@
+#!include_default
+# Avoid configuration metadata file
+^MYMETA\.
+
+# Avoid Module::Build generated and utility files.
+\bBuild$
+\bBuild.bat$
+\b_build
+\bBuild.COM$
+\bBUILD.COM$
+\bbuild.com$
+^MANIFEST\.SKIP
+^simple-prima-script.pl
+
+# Avoid archives of this distribution
+\bApp-Prima-REPL-[\d\.\_]+

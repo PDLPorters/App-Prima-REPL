@@ -2,3 +2,6 @@ prima-repl.*
 .prima.history
 .prima.repl.history
 .prima-repl.history
+Build
+MANIFEST.SKIP.bak
+_build/
