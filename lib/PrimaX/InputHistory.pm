@@ -1,6 +1,8 @@
 use strict;
 use warnings;
 
+# Note: the documentation is given below.
+
 package ih;
 use constant Null    =>  0;
 use constant StdOut  =>  1;
@@ -27,6 +29,8 @@ package PrimaX::InputHistory::Output::StdOut;
 sub printout {
 	my $self = shift;
 	print @_;
+	
+	# Track the last printed line so that newline printout works:
 	if (defined $_[-1]) {
 		$self->{last_line} = $_[-1];
 	}
@@ -48,6 +52,71 @@ sub new {
 	return bless $self
 }
 
+=head1 NAME
+
+PrimaX::InputHistory - an input line with input history navigation
+
+=head1 SYNOPSIS
+
+ use strict;
+ use warnings;
+ use Prima qw(Application);
+ use PrimaX::InputHistory;
+ 
+ # A simple repl that prints the output to the screen
+ 
+ my $window = Prima::MainWindow->new(
+     text => 'Simpe REPL',
+     width => 600,
+ );
+ 
+ my $file_name = 'my_history.txt';
+ my $history_length = 10;
+ my $inline = PrimaX::InputHistory->create(
+     owner => $window,
+     text => '',
+     pack => {fill => 'both'},
+     storeType => ih::NoRepeat,
+     onCreate => sub {
+         my $self = shift;
+         
+         # Open the file and set up the history:
+         my @history;
+         if (-f $file_name) {
+             open my $fh, '<', $file_name;
+             while (<$fh>) {
+                 chomp;
+                 push @history, $_;
+             }
+             close $fh;
+         }
+         
+         # Store the history and revisions:
+         $self->history(\@history);
+     },
+     onDestroy => sub {
+         my $self = shift;
+         
+         # Save the last lines in the history file:
+         open my $fh, '>', $file_name;
+         # I want to save the *last* N lines, so I don't necessarily start at
+         # the first entry in the history:
+         my $offset = 0;
+         my @history = @{$self->history};
+         $offset = @history - $history_length if (@history > $history_length);
+         while ($offset < @history) {
+             print $fh $history[$offset++], "\n";
+         }
+         close $fh;
+     },
+ );
+ 
+ print "Press Up/Down, Page-Up/Page-Down to see your input history\n";
+ 
+ run Prima;
+
+
+=cut
 
 ###########################
 # PrimaX::InputHistory #
@@ -57,7 +126,7 @@ package PrimaX::InputHistory;
 use base 'Prima::InputLine';
 
 # This has the standard profile of an InputLine widget, except that it knows
-# about history files, which will require a bit of work in the init section.
+# about navigation keys and other things useful for the History.
 sub profile_default
 {
 	my %def = %{$_[ 0]-> SUPER::profile_default};
@@ -78,9 +147,7 @@ sub profile_default
 
 	return {
 		%def,
-		fileName => '.prima.history',
 		pageLines => 10,		# lines to 'scroll' with pageup/pagedown
-		historyLength => 200,	# total number of lines to save to disk
 		accelItems => \@acc,
 		outputWidget => ih::StdOut,
 		promptFormat => '> ',
@@ -95,27 +162,15 @@ sub profile_default
 sub init {
 	my $self = shift;
 	my %profile = $self->SUPER::init(@_);
-	my $fileName = $self->{fileName} = $profile{fileName};
-	foreach ( qw(pageLines historyLength promptFormat currentLine outputWidget
-				storeType) ) {
+	foreach ( qw(pageLines promptFormat currentLine outputWidget storeType) ) {
 		$self->{$_} = $profile{$_};
 	}
 	
-	# Open the file and set up the other internal data:
-	my @history;
-	if (-f $fileName) {
-		open my $fh, '<', $fileName;
-		while (<$fh>) {
-			chomp;
-			push @history, $_;
-		}
-		close $fh;
-	}
-
 	# Store the history and revisions:
-	$self->history(\@history);
 	$self->currentRevisions([]);
-	$self->currentLine(0);
+	$self->history([]);
+	# history calls currentLine, so this doesn't need to be called:
+	# $self->currentLine(0);
 	
 	# Set up the output widget. Perl scalars with text are not allowed:
 	if (not ref($profile{outputWidget}) and $profile{outputWidget} !~ /^\d+$/) {
@@ -140,29 +195,6 @@ sub init {
 	}
 
 	return %profile;
-}
-
-# This stage pretty much does away with the object. I want to save the results
-# to the history file as a last step before going down. Note that the super's
-# done function is called *after* this has exectued:
-sub done {
-	my $self = shift;
-	
-	# Save the last N lines in the history file:
-	open my $fh, '>', $self->{fileName};
-	# I want to save the *last* 200 lines, so I don't necessarily start at
-	# the first entry in the history:
-	my $offset = 0;
-	my @history = @{$self->{history}};
-	my $historyLength = $self->{historyLength};
-	$offset = @history - $historyLength if (@history > $historyLength);
-	while ($offset < @history) {
-		print $fh $history[$offset++], "\n";
-	}
-	close $fh;
-	
-	# All done. Call the super's done function:
-	$self->SUPER::done;
 }
 
 # Changes the contents of the evaluation line to the one stored in the history.
@@ -190,17 +222,9 @@ sub move_line {
 
 # The class properties. Template code for these was taken from Prima::Object's
 # name example property code:
-sub fileName {
-	return $_[0]->{fileName} unless $#_;
-	$_[0]->{fileName} = $_[1];
-}
 sub pageLines {
 	return $_[0]->{pageLines} unless $#_;
 	$_[0]->{pageLines} = $_[1];
-}
-sub historyLength {
-	return $_[0]->{historyLength} unless $#_;
-	$_[0]->{historyLength} = $_[1];
 }
 sub promptFormat {
 	return $_[0]->{promptFormat} unless $#_;
@@ -213,6 +237,8 @@ sub outputWidget {
 sub history {
 	return $_[0]->{history} unless $#_;
 	$_[0]->{history} = $_[1];
+	$_[0]->currentLine(0);
+	return $_[1];
 }
 sub currentRevisions {
 	return $_[0]->{currentRevisions} unless $#_;
@@ -254,7 +280,7 @@ sub currentLine {
 	
 	# Load the text using the Orcish Maneuver:
 	my $new_text = $self->currentRevisions->[$line_number]
-						//= $self->history->[-$line_number]; #/
+						//= $self->history->[-$line_number];
 	$self->text($new_text);
 	
 	# Put the cursor at the previous offset. However, if the previous offset
@@ -308,8 +334,8 @@ sub Evaluate {
 sub on_evaluate {
 	my ($self, $text) = @_;
 	my $results = eval ($text);
-	$self->outputWidget->printout($results) if defined $results;
-	$self->outputWidget->printout('undef') if not defined $results;
+	$self->outputWidget->newline_printout($results) if defined $results;
+	$self->outputWidget->newline_printout('undef') if not defined $results;
 }
 
 # Issues the on_PostEval notification.

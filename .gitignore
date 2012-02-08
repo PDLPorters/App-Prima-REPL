@@ -5,3 +5,4 @@ prima-repl.*
 Build
 MANIFEST.SKIP.bak
 _build/
+blib/

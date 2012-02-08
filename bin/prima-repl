@@ -8,8 +8,10 @@ use Carp;
 use File::Spec;
 use FindBin;
 
-#use InputHistory;
 use PrimaX::InputHistory;
+my $fileName = '.prima.repl.history';
+my $historyLength = 200;	# total number of lines to save to disk
+
 #use Eval::WithLexicals;
 
 my $DEBUG_OUTPUT = 0;
@@ -101,8 +103,39 @@ our $window = Prima::MainWindow->new(
 		owner => $window,
 		text => '',
 		pack => {fill => 'both', after => $notebook, padx => $padding, pady => $padding},
-		fileName => '.prima.repl.history',
 		storeType => ih::NoRepeat,
+		onCreate => sub {
+			my $self = shift;
+			
+			# Open the file and set up the history:
+			my @history;
+			if (-f $fileName) {
+				open my $fh, '<', $fileName;
+				while (<$fh>) {
+					chomp;
+					push @history, $_;
+				}
+				close $fh;
+			}
+			
+			# Store the history and revisions:
+			$self->history(\@history);
+		},
+		onDestroy => sub {
+			my $self = shift;
+			
+			# Save the last N lines in the history file:
+			open my $fh, '>', $fileName;
+			# I want to save the *last* 200 lines, so I don't necessarily start at
+			# the first entry in the history:
+			my $offset = 0;
+			my @history = @{$self->history};
+			$offset = @history - $historyLength if (@history > $historyLength);
+			while ($offset < @history) {
+				print $fh $history[$offset++], "\n";
+			}
+			close $fh;
+		},
 	);
 	# Add the special accelerators seperately:
 	# Update the accelerators.

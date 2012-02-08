@@ -1,37 +1,56 @@
-use Prima qw(Application MsgBox);
-
-package test;
-use base 'Prima::MainWindow';
-
-{
-	my %notifications = (
-		%{Prima::MainWindow-> notification_types()},
-		Blarg => nt::Default,
-	);
-
-	sub notification_types { return \%notifications; }
-}
-
-
-sub on_blarg {
-	print "object method called with args ", join(', ', @_), "\n";
-	$_[1] = 'modified by class';
-}
-
-package main;
-
-my $window = test-> new( 
-	text => 'Hello world!',
-	size => [ 200, 200],
-	onBlarg => sub {
-		print "hook called with args, ", join(', ', @_), "\n";
-		$_[1] = 'modified by hook';
-	},
-);
-
-my $value = 'argument 1';
-$window->notify('Blarg', $value);
-
-run Prima;
-
-print "Value is now $value\n";
+ use strict;
+ use warnings;
+ use Prima qw(Application);
+ use PrimaX::InputHistory;
+ 
+ # A simple repl that prints the output to the screen
+ 
+ my $window = Prima::MainWindow->new(
+     text => 'Simpe REPL',
+     width => 600,
+ );
+ 
+ my $file_name = 'my_history.txt';
+ my $history_length = 10;
+ my $inline = PrimaX::InputHistory->create(
+     owner => $window,
+     text => '',
+     pack => {fill => 'both'},
+     storeType => ih::NoRepeat,
+     onCreate => sub {
+         my $self = shift;
+         
+         # Open the file and set up the history:
+         my @history;
+         if (-f $file_name) {
+             open my $fh, '<', $file_name;
+             while (<$fh>) {
+                 chomp;
+                 push @history, $_;
+             }
+             close $fh;
+         }
+         
+         # Store the history and revisions:
+         $self->history(\@history);
+     },
+     onDestroy => sub {
+         my $self = shift;
+         
+         # Save the last lines in the history file:
+         open my $fh, '>', $file_name;
+         # I want to save the *last* N lines, so I don't necessarily start at
+         # the first entry in the history:
+         my $offset = 0;
+         my @history = @{$self->history};
+         $offset = @history - $history_length if (@history > $history_length);
+         while ($offset < @history) {
+             print $fh $history[$offset++], "\n";
+         }
+         close $fh;
+     },
+ );
+ 
+ print "Press Up/Down, Page-Up/Page-Down to see your input history\n";
+ 
+ run Prima;
