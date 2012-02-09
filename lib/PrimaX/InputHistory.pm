@@ -280,7 +280,7 @@ sub currentLine {
 	
 	# Load the text using the Orcish Maneuver:
 	my $new_text = $self->currentRevisions->[$line_number]
-						//= $self->history->[-$line_number];
+						//= $self->history->[-$line_number]; #/
 	$self->text($new_text);
 	
 	# Put the cursor at the previous offset. However, if the previous offset

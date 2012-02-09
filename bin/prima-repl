@@ -136,7 +136,13 @@ our $window = Prima::MainWindow->new(
 			}
 			close $fh;
 		},
+		onKeyUp => sub {
+			main::my_keyup(@_);
+		},
 	);
+# working here - a simple hack; override main::my_keyup to play with the
+# keyup callback on the input line.
+sub main::my_keyup {};
 	# Add the special accelerators seperately:
 	# Update the accelerators.
 	my $accTable = $inline->accelTable;
@@ -218,6 +224,7 @@ $window->accelItems([
 	, ['', '', km::Ctrl | ord 'o',		sub {main::open_file()}	]	# open file
 	, ['', '', km::Ctrl | ord 'S',		sub {main::save_file()}	]	# save file
 ]);
+
 
 ################################################################################
 # Usage      : REPL::create_new_tab($name, @creation_options)
@@ -928,16 +935,16 @@ unlink 'prima-repl.logfile';
 
 __END__
 
-=head1 Prima::REPL Help
+=head1 App::Prima::REPL Help
 
-This is the help documentation for  Prima::REPL, a graphical run-eval-print-loop
+This is the help documentation for App::Prima::REPL, a graphical run-eval-print-loop
 (REPL) for perl development, targeted at pdl users. Its focus is on L<PDL>, the
 Perl Data Language, but it works just fine even if you don't have PDL.
 
-At the bottom of the Prima::REPL window is a single entry line for direct
+At the bottom of the App::Prima::REPL window is a single entry line for direct
 command input. The main window is a set of tabs, the first of which is an output
 tab. Additional tabs can contain files or any other extension that has been
-written as a Prima::REPL tab.
+written as a App::Prima::REPL tab.
 
 If your project has project-specific notes, you should be able to find them here:
 L<prima-repl.initrc>.
@@ -953,11 +960,12 @@ Before I launch into the tutorial, I want to cover some basic navigation to help
 you quickly get around the REPL. The following keyboard shortcuts should be
 helpful to you even as we get started:
 
- CTRL-h         open or switch to the help window
- ALT-1          go to the output window
- CTRL-i         put the cursor in the input line
- CTRL-PageUp    go to the previous tab
- CTRL-PageDown  go to the next tab
+ Normal Keyboard  Mac Laptop
+ CTRL-h           CTRL-h        open or switch to the help window
+ ALT-1            ??????        go to the output window
+ CTRL-i           CTRL-i        put the cursor in the input line
+ CTRL-PageUp      CTRL-FN-Up    go to the previous tab
+ CTRL-PageDown    CTRL-FN-Down  go to the next tab
 
 =head1 Tutorials
 
@@ -1016,13 +1024,17 @@ can also specify the name of a module with documentation:
  > help Carp
 
 This command will open the pod viewer with the requested module's documentation.
+This is sometimes preferable to pressing C<g> from Prima's help window, since
+if you have a typo in your module name you must retype the whole thing. The
+input line remembers what you last typed, so it's easy to retrieve the
+correct typos.
 
-Alternatively, you can use the C<pdldoc> command, which operates similarly to
-the C<pdldoc> program on your computer. Typing
+If you have PDL, you can also use the C<pdldoc> command, which operates
+similarly to the C<pdldoc> program on your computer. Typing
 
  > pdldoc hist
 
-will load the pod from PDL::Basic and scroll to the documentation for the
+will load the pod from L<PDL::Basic> and scroll to the documentation for the
 C<hist> function and typing
 
  > pdldoc Ufunc
@@ -1098,7 +1110,7 @@ even switch tabs.
 
 Although the multi-line buffer is not the greatest editor, it is useful in a
 pinch. You can save the contents of a buffer by pressing C<CTRL-s> in the buffer
-window, which will present a dialog asking where you want to save yoru file.
+window, which will present a dialog asking where you want to save your file.
 Alternatively, you can type
 
  > save_file 'filename'
@@ -1121,10 +1133,10 @@ new tab for your file.
 Prima makes opening and viewing images very easy, so I've added a function for
 opening a tab to display an image. The function is C<open_image> and it requires
 that you specify the filename of your image to open. For example, if you have an
-image called C<test.jpg> in your current working directory, you could view it
+image called C<test.png> in your current working directory, you could view it
 with the following:
 
- > open_image 'test.jpg'
+ > open_image 'test.png'
 
 =head2 Plotting PDL Data
 
@@ -1139,7 +1151,9 @@ you how this works:
  > $y_data = exp($t_data)
  > line_plot($t_data, $y_data)
 
-Here's a more complicated example for a multiline buffer:
+Here's a more complicated example for a multiline buffer. (Note that in
+future versions of PDL::Graphics::Prima, datasets will be handled
+differently.)
 
  # Create some simple data:
  $t_data = sequence(6) / 0.5 + 1;
@@ -1163,25 +1177,139 @@ the hyperbolic cosine function like so:
 
  $plotter->dataSets->{cosh} = [\&PDL::cosh, colors => cl::Green];
 
+=head1 Customizing
+
+There are a number of ways that you can customize your REPL, including
+per-project rc files and pod notes, custom tabs, and custom commands.
+
 =head2 RC File and Notes
 
-Prima::REPL supports per-directory rc files. When you have a file called
-C<prima-repl.initrc> in the directory from which you execute C<prima-repl>,
+App::Prima::REPL supports per-directory rc files and input logs. When you
+have a file called
+F<prima-repl.initrc> in the directory from which you execute C<prima-repl>,
 it will be executed upon startup. The purpose of this rc file is to allow for
 per-project initialization and function definitions.
 
-You can emulate user input with the C<simulate_run> command, which will add text
+You can emulate user input with the C<REPL::simulate_run> command, which will add text
 to the input line and then use the standard input lne mechanism to evaluate the
 text. This can be useful because it puts the evaluated text into the user's
 history. However, as this adds lines to the history file, you should use this
 sparingly, only when you think the user will want to retrieve the command in
 their history.
 
-One final, useful aspect of the initrc file is that you can add documentation by
+A very useful apect of F<prima-repl.initrc> file is that you can add documentation by
 simply inserting pod in your initrc file. The link at the top of this help file
 will automatically open the documentation or give a message indicating that
 there is no such documentation. This way, if you declare any useful functions
 in your initrc file, you can document them easily.
+
+The initrc file can also add tabs and add custom commands, but you can do
+these from a multiline buffer as well, so I put them in their own sections.
+
+=head2 Custom Tabs
+
+If you wish to create custom tabs, there are two commands that will help.
+
+=over
+
+=item REPL::create_new_tab($name, @creation_options)
+
+This puts a new tab at the end of the tab list with the specified name. The
+C<@creation_options> are exactly what you would send to Prima's C<insert>
+command, including the widget class as the first element. This function
+returns the created object when called in scalar context. In list context,
+it also returns the tab index as the second return value. This index is useful if
+you want to specify a different default widget for your tab, which brings me
+to...
+
+=item REPL::change_default_widget($index, $widget)
+
+This function changes the default widget for the tab with the given index.
+The default widget is the widget that recieves the keyboard focus when you
+first switch to the tab. This function takes the tab index (returned by
+C<REPL::create_new_tab> in list context) and the desired widget. Note that
+if you want C<CTRL-i> to toggle between the desired widget and the input
+line, which is the behavior of the file buffers, you will need to have your
+default widge properly respond to C<CTRL-i> keyboard input.
+
+=back
+
+At some point I'll add an example of how to use these.
+
+=head2 Custom Commands
+
+Perl knows about functions. App::Prima::REPL also knows about commands, like
+the C<help> command. Remember, the help command doesn't require quotes around
+the module name. How do I do this? I achieve this by hooking into the
+C<PressEnter> stage of the InputHistory widget. Hooking into this stage of
+the widget lets you modify what eventually gets evaluated (for example, by
+applying the NiceSlice filter) and even lets you avoid the Perl eval-stage
+altogether.
+
+Here's the hook that proceses the help command:
+
+ $REPL::inline->add_notification(PressEnter => sub {
+     # See if they asked for help.
+     if ($_[1] =~ /^\s*help\s*(.*)/) {
+         get_help($1);
+         $_[0]->clear_event;
+     }
+ });
+
+Notice that the help command does not want the eventual string to be
+evaluated, so it calls C<get_help> and then clears the event. If you simply
+want to modify the string before it gets evaluated, feel free to modify
+C<$_[1]> directly without clearing the event.
+
+The subroutine that you write for such hooks will be passed two arguments,
+the InputHistory object (C<$REPL::inline>) and the text from the input line's
+buffer. Note that by the time your notification receives the text, it may
+have already been modified as there are a number of notifications built-in.
+
+=head2 Other API Functions
+
+Here are some other REPL API functions that you may find useful:
+
+=over
+
+=item REPL::goto_output
+
+Simply switches the focus to the output tab, which is useful when you want
+to print a number of things out and have you user notice.
+
+=item REPL::warn (LIST)
+
+If you simply C<warn> when something goes wrong, the user will probably not
+notice unless they are looking at the Output tab. This function acts just
+like Perl's C<warn> function, but it switches to the Output tab, something
+that should certainly grab your user's attention. Of course, you could use
+Perl's C<warn> and call C<REPL::goto_output>, but this is faster, especially
+with failure messages. Compare:
+
+ if ($messed_up) {
+     print "Problems!\n";
+     REPL::goto_output;
+     return;
+ }
+
+vs
+
+ return REPL::warn("Problems!\n") if $messed_up;
+
+=item REPL::goto_page ($page_number)
+
+Perhaps this should be called C<goto_tab>. Oh well. This switches to the
+given tab according to the tab's number. Accomodations may some day be made
+to go to a tab basd on its name.
+
+=item REPL::goto_next_page
+=item REPL::goto_prev_page
+
+Simple wrappers around C<REPL::goto_page> that figure out your current page
+and go to the next or previous one. This is useful if you have multiple tabs
+that "talk" with each other, so-to-speak.
+
+=back
 
 =head1 Inline
 
@@ -1196,8 +1324,10 @@ example:
      }
  };
 
-I use the PerlIO function for printing to stdout. In principle, this is supposed
-to be captured and redirected, but I have not succeeded. :-(
+I use the PerlIO function for printing to stdout. In principle, this is
+supposed to be captured and redirected to the Output tab, but somehow Perl
+just sends it straight to the terminal. I intend to talk with some
+experienced XS hackers or the Perl porters about this some time.
 
 =head1 PDL Debugging
 
@@ -1210,13 +1340,17 @@ To get PDL debugging statements, type the following in the evaluation line:
  CTRL-n  create a new file
  CTRL-w  close the currently open file or tab
  CTRL-o  open a file
- CTRL-S  Save a file (notice the capital)
- CTRL-2 through CTRL-9
+ CTRL-s  Save a file
+ ALT-2 through ALT-9 (doesn't work on Mac Laptops)
          switch to tab 2 through 9
 
 
-=head1 AUTHOR
+=head1 Author, Repository
 
-This program is Copyright David Mertens, 2011.
+This program is Copyright David Mertens, 2011, 2012. It is distributed
+under the same terms as Perl itself.
+
+The latest copy of this project should be available on Github at
+L<https://github.com/run4flat/App-Prima-REPL>.
 
 =cut

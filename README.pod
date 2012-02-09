@@ -1,0 +1,120 @@
+=head1 App::Prima::REPL
+
+A Run-Eval-Print-Loop written with Prima targetting the PDL community.
+
+=head1 Alpha Version
+
+This is a script that I started writing in January, 2011. At the time it was
+a hack to let me play with a GUI REPL, but it was a huge hack. Since that
+time I have begun extracting the modular pieces into library pieces, the
+most complete of which is PrimaX::InputHistory. However, much work remains
+to be done, and much documentation remains to be written. Do not be
+surprised if the user-interface changes, and certainly do not be surprised
+if the (currently undocumented) Tab API changes. However, for the daily use
+of hacking on data and making simple plots, these will not much matter.
+
+=head1 Supported Platforms and Filing Bugs
+
+prima-repl is supposed to work on Windows, Mac, and Linux. If you find
+trouble, please report it to the issue tracker on Github at
+L<https://github.com/run4flat/App-Prima-REPL/issues>.
+
+=head1 Installation
+
+Currently, this software is only distributed on Github. I intend to release
+it to CPAN at the same time that I release PDL::Drawing::Prima and
+PDL::Graphics::Prima. Strictly speaking, this application does not depend on
+either of those packages, but they provide very nice plotting capabilities
+for PDL, so if you use PDL I highly recommend installing them.
+
+At any rate, you cannot install this software with a simple C<cpan> or
+C<cpanm>. Instead, do the following:
+
+=over
+
+=item install Prima
+
+Prima is available on CPAN, but the version available on CPAN has a bug with
+closing tabs. I pointed this out to Dmitry while I was working on this app
+and he quickly fixed it, but the correctly working code is only available
+from the development sources. If you are on a Linux machine B<you must
+install your X11 header files>, which are considered C<dev> files on many
+flavors of Linux. If you are a Windows or Mac user, you should be fine as
+long as you have a C compiler for your system. And everybody will need git.
+
+Download Prima from Github:
+
+ git clone git://github.com/dk/Prima.git
+ cd Prima
+ perl Makefile.PL
+ make
+ make test  # there may be a couple of errors
+            # I recommend igoring them
+ make install
+
+Note for Mac users: I have found that Prima will fail to build/install if I
+have libjpeg or libtiff installed. That's a real bummer, and it's something
+that I'm going to try to work on. If you have those installed and you
+C<don't> run into trouble, please let me know. If you run into trouble, you
+can either uninstall them or you can try to help me and Dmitry figure out
+what's wrong.
+
+=item optional: install PDL::Drawing::Prima
+
+PDL::Drawin::Prima is needed for the plotting library that I mention next.
+Note that you should only install this if you are a PDL user and you have
+PDL installed.
+
+ git clone git://github.com/run4flat/PDL-Drawing-Prima.git
+ cd PDL-Drawing-Prima
+ perl Build.PL
+ ./Build
+ # try running some of the scripts in examples/
+ ./Build install
+
+=item optional: install PDL::Graphics::Prima
+
+PDL::Graphics::Prima is a fantastic plotting library that is currently in
+alpha. It will be changing in the next month or so. The Simple interface
+should remain unchanged, but the underlying PlotType and DataSet systems are
+undergoing a substantial reorganization. That partially-completed
+reorganization is currently in the master branch (sorry), but the last
+usable version of the library has been tagged. To install it, do the
+following (Windows users may need to use C<nmake> or C<dmake> instead or
+C<make>):
+
+ git clone git://github.com/run4flat/PDL-Graphics-Prima.git
+ cd PDL-Graphics-Prima
+ git checkout v0.01
+ perl Makefile.PL
+ make
+ # try running example scripts in test, though
+ # they are not really tests
+ make install
+
+=item install App::Prima::REPL
+
+One more piece, the actual REPL:
+
+ git clone git://github.com/run4flat/App-Prima-REPL.git
+ cd App-Prima-REPL
+ perl Buld.PL
+ ./Build
+ # You can play with it like so:
+ perl -Mblib blib/script/prima-repl
+ # OK, now install!
+ ./Build install
+
+=back
+
+=head1 Copyright and License
+
+Copyright (C) 2011, 2012 David Mertens
+
+This library is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
+
+Author: David Mertens <dcmertens.perl.csharp@gmail.com>
+
+Note that my email is intentionally obfuscated. Knowing that I am a
+Perl programmer, you can probably remove the part that does not belong.
