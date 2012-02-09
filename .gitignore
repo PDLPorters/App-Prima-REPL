@@ -6,3 +6,4 @@ Build
 MANIFEST.SKIP.bak
 _build/
 blib/
+Build.bat
