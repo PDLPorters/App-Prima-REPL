@@ -200,8 +200,11 @@ sub get_help {
 		# Otherwise, open this application's documentation:
 		$::application->open_help($app_filename);
 	}
-	# Make sure the the opened help is visible
-	$::application->get_active_window->bring_to_front;
+	
+	# Make sure the the opened help is visible (but check that the active
+	# window is defined, as this can cause trouble on Windows).
+	$::application->get_active_window->bring_to_front
+		if $::application->get_active_window;
 }
 
 # Add some accelerator keys to the window for easier navigaton:
