@@ -432,7 +432,7 @@ $inline->add_notification(PressEnter => sub {
 
 # Override PDL::Graphics::Prima::Simple::plot
 if ($loaded_Prima_Graphics) {
-	no warnings 'redefine';
+	no warnings qw(redefine once);
 
 	*PDL::Graphics::Prima::Simple::plot = sub {
 		# Make sure PDL::Graphics::Prima is loaded and they provided good arguments
