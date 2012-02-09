@@ -26,7 +26,7 @@ BEGIN {
 		require PDL::NiceSlice;
 		$loaded_PDL = 1;
 	};
-	print $@ if $@;
+	print $@ if $@ and $@ !~ /^Can't locate/;
 	
 	# Load PDL::Graphics::Prima if they have it
 	$loaded_Prima_Graphics = 0;
@@ -37,7 +37,7 @@ BEGIN {
 		PDL::Graphics::Prima::Simple->import;
 		$loaded_Prima_Graphics = 1;
 	};
-	print $@ if $@;
+	print $@ if $@ and $@ !~ /^Can't locate/;
 }
 
 my $app_filename = File::Spec->catfile($FindBin::Bin, $FindBin::Script);
@@ -431,43 +431,44 @@ $inline->add_notification(PressEnter => sub {
 });
 
 # Override PDL::Graphics::Prima::Simple::plot
+if ($loaded_Prima_Graphics) {
+	no warnings 'redefine';
 
-no warnings 'redefine';
-sub PDL::Graphics::Prima::Simple::plot {
-	# Make sure PDL::Graphics::Prima is loaded and they provided good arguments
-	return REPL::warn "PDL::Graphics::Prima did not load successfully!"
-		if not $loaded_Prima_Graphics;
-	return REPL::warn "prima_plot expects a collection of key => value pairs, but you sent"
-		. " an odd number of arguments!" if @_ % 2 == 1;
-	
-	# Get the plotting arguments and supply a meaningful default pack:
-	my %args = (
-		pack => { fill => 'both', expand => 1},
-		@_,
-	);
-	
-	# Create the plotter, go to the tab, and return the plotter
-	my $plotter;
-	if ($REPL::emulate_simple) {
-		$plotter = Prima::Window->create(
-			text  => $args{title} || 'PDL::Graphics::Prima',
-			size  => $args{size} || [@REPL::default_sizes],
-		)->insert('Plot',
+	*PDL::Graphics::Prima::Simple::plot = sub {
+		# Make sure PDL::Graphics::Prima is loaded and they provided good arguments
+		return REPL::warn "PDL::Graphics::Prima did not load successfully!"
+			if not $loaded_Prima_Graphics;
+		return REPL::warn "prima_plot expects a collection of key => value pairs, but you sent"
+			. " an odd number of arguments!" if @_ % 2 == 1;
+		
+		# Get the plotting arguments and supply a meaningful default pack:
+		my %args = (
 			pack => { fill => 'both', expand => 1},
-			%args
+			@_,
 		);
+		
+		# Create the plotter, go to the tab, and return the plotter
+		my $plotter;
+		if ($REPL::emulate_simple) {
+			$plotter = Prima::Window->create(
+				text  => $args{title} || 'PDL::Graphics::Prima',
+				size  => $args{size} || [@REPL::default_sizes],
+			)->insert('Plot',
+				pack => { fill => 'both', expand => 1},
+				%args
+			);
+		}
+		else {
+			# Figure out the plot name:
+			my $name = $args{title} || 'Plot';
+			# Build the plot tab and switch to it:
+			$plotter = REPL::create_new_tab($name, Plot => %args);
+			REPL::goto_page -1;
+		}
+		return $plotter;
 	}
-	else {
-		# Figure out the plot name:
-		my $name = $args{title} || 'Plot';
-		# Build the plot tab and switch to it:
-		$plotter = REPL::create_new_tab($name, Plot => %args);
-		REPL::goto_page -1;
-	}
-	return $plotter;
+	*main::plot = \&PDL::Graphics::Prima::Simple::plot;
 }
-*main::plot = \&PDL::Graphics::Prima::Simple::plot;
-use warnings 'redefine';
 
 ################################################################################
 #                                Handling Evals                                #
