@@ -466,7 +466,8 @@ if ($loaded_Prima_Graphics) {
 			REPL::goto_page -1;
 		}
 		return $plotter;
-	}
+	};
+	
 	*main::plot = \&PDL::Graphics::Prima::Simple::plot;
 }
 
