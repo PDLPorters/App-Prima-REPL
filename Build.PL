@@ -6,7 +6,7 @@ my $build = Module::Build->new(
 	module_name => 'App::Prima::REPL',
 	license  => 'perl',
 	requires => {
-		Prima	=> '1.32',
+		Prima	=> '1.33',
 	},
 );
 
