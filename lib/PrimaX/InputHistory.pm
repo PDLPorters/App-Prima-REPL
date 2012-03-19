@@ -1,5 +1,6 @@
 use strict;
 use warnings;
+use Prima;
 
 # Note: the documentation is given below.
 
