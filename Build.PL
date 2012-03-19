@@ -8,6 +8,10 @@ my $build = Module::Build->new(
 	requires => {
 		Prima	=> '1.32',
 	},
+	recommends => {
+		'PDL::Graphics::Prima' => '0',
+		'PDL' => '0',
+	}
 );
 
 $build->create_build_script;
