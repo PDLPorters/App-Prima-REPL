@@ -760,11 +760,11 @@ sub run_file {
 
 	# If error, switch to the console and print it to the output:
 	if ($@) {
+		my $message = $@;
 		my $tabs = $notebook->tabs;
 		my $header = "----- Error running ". $tabs->[$page]. " -----";
-		REPL::warn($header);
-		REPL::warn($@);
-		REPL::warn('-' x length $header);
+		$message = "$header\n$message\n" . ('-' x length $header);
+		REPL::warn($message);
 		$@ = '';
 	}
 }
