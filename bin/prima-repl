@@ -41,7 +41,7 @@ BEGIN {
 }
 
 my $app_filename = File::Spec->catfile($FindBin::Bin, $FindBin::Script);
-my $version = 0.1;
+my $version = 0.3;
 
 
 #########################
@@ -273,6 +273,19 @@ sub create_new_tab {
 sub change_default_widget {
 	my ($index, $widget) = @_;
 	$default_widget_for[$index] = $widget;
+}
+
+################################################################################
+# Usage      : REPL::get_default_widget($index)
+# Purpose    : retrieves the default widget for the tab with the given index
+# Returns    : the default widget
+# Parameters : the tab's index (returned in list context from create_new_tab)
+# Throws     : never
+# Comments   : use this to modify the default widget's properties, if needed
+################################################################################
+sub get_default_widget {
+	my ($index) = @_;
+	return $default_widget_for[$index];
 }
 
 # closes the tab number, or name if provided, or current if none is supplied
@@ -560,12 +573,15 @@ sub my_eval {
 	$REPL::inline->text($old_text);
 }
 
-# Creates a new text-editor tab and selects it
-sub new_file {
-	my ($page_widget, $index) = REPL::create_new_tab('New File', Edit =>
-		text => '',
-		pack => { fill => 'both', expand => 1, padx => $padding, pady => $padding },
-		# Allow for insertions, deletions, and newlines:
+sub endow_editor_widget {
+	my $widget = shift;
+	
+	# Verify the object
+	croak("endow_editor_widget expects a Prima::Edit widget")
+		unless eval{$widget->isa("Prima::Edit")};
+	
+	# Allow for insertions, deletions, newlines, etc
+	$widget->set(
 		tabIndent => 1,
 		syntaxHilite => 1,
 		wantTabs => 1,
@@ -576,7 +592,7 @@ sub new_file {
 	);
 
 	# Update the accelerators.
-	my $accTable = $page_widget->accelTable;
+	my $accTable = $widget->accelTable;
 
 	# Add some functions to the accelerator table
 	$accTable->insert([
@@ -589,7 +605,19 @@ sub new_file {
 		# Ctrl-PageUp/PageDown don't work by default, so add them, too:
 		, ['', '', kb::PageUp 	| km::Ctrl,  \&REPL::goto_prev_page				]
 		, ['', '', kb::PageDown | km::Ctrl,  \&REPL::goto_next_page				]
-		], '', 0);
+		]
+		, ''
+		, 0
+	);
+}
+
+# Creates a new text-editor tab and selects it
+sub new_file {
+	my ($page_widget, $index) = REPL::create_new_tab('New File', Edit =>
+		text => '',
+		pack => { fill => 'both', expand => 1, padx => $padding, pady => $padding },
+	);
+	endow_editor_widget($page_widget);
 
 	# Update the default widget for this page:
 	REPL::change_default_widget($index, $page_widget);
@@ -651,7 +679,7 @@ sub open_file {
 	(undef,undef,my $name) = File::Spec->splitpath( $file );
 	# working here - make this smarter so it calls new_file for anything that's
 	# not an edit buffer.
-	if ($page == 0) {
+	if ($page == 0 or not eval{$default_widget_for[$notebook->pageIndex]->isa('Prima::Edit')}) {
 		new_file($name);
 	}
 	else {
@@ -1239,6 +1267,18 @@ C<REPL::create_new_tab> in list context) and the desired widget. Note that
 if you want C<CTRL-i> to toggle between the desired widget and the input
 line, which is the behavior of the file buffers, you will need to have your
 default widge properly respond to C<CTRL-i> keyboard input.
+
+=item REPL::endow_editor_widget($widget)
+
+Given a normal editor widget, this sets the various options to make the editor
+behave like the default multiline buffer editor. For example, it turns on
+syntax highlighting and sets the default accelerator keys. Although not strictly
+necessary for creating tabs, it may be useful if you want to create a tab with both
+an editor and some other sort of widget, side-by-side.
+
+This function does not set the widget as the tab's default widget, since you
+may want the default widget to be something else. You should explicitly invoke
+C<REPL::change_default_widget> (above) to do that.
 
 =back
 
