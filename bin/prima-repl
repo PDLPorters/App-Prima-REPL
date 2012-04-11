@@ -288,6 +288,53 @@ sub get_default_widget {
 	return $default_widget_for[$index];
 }
 
+################################################################################
+# Usage      : REPL::endow_editor_widget($widget)
+# Purpose    : Sets the properties of an edit widget so it behaves like a
+#            : multiline buffer.
+# Returns    : nothing
+# Parameters : the widget to endow
+# Throws     : when you supply an object not derived from Prima::Edit
+# Comments   : none
+################################################################################
+sub endow_editor_widget {
+	my $widget = shift;
+	
+	# Verify the object
+	croak("endow_editor_widget expects a Prima::Edit widget")
+		unless eval{$widget->isa("Prima::Edit")};
+	
+	# Allow for insertions, deletions, newlines, etc
+	$widget->set(
+		tabIndent => 1,
+		syntaxHilite => 1,
+		wantTabs => 1,
+		wantReturns => 1,
+		wordWrap => 0,
+		autoIndent => 1,
+		cursorWrap => 1,
+	);
+
+	# Update the accelerators.
+	my $accTable = $widget->accelTable;
+
+	# Add some functions to the accelerator table
+	$accTable->insert([
+		# Ctrl-Enter runs the file
+		  ['', '', kb::Return 	| km::Ctrl,  sub{main::run_file()}				]
+		, ['', '', kb::Enter  	| km::Ctrl,  sub{main::run_file()}				]
+		# Ctrl-Shift-Enter runs the file and selects the output window
+		, ['', '', kb::Return 	| km::Ctrl | km::Shift,	\&main::run_file_with_output	]
+		, ['', '', kb::Enter  	| km::Ctrl | km::Shift,	\&main::run_file_with_output	]
+		# Ctrl-PageUp/PageDown don't work by default, so add them, too:
+		, ['', '', kb::PageUp 	| km::Ctrl,  \&REPL::goto_prev_page				]
+		, ['', '', kb::PageDown | km::Ctrl,  \&REPL::goto_next_page				]
+		]
+		, ''
+		, 0
+	);
+}
+
 # closes the tab number, or name if provided, or current if none is supplied
 # ENCOUNTERIMG TROUBLE WITH THIS, working here
 sub close_tab {
@@ -302,7 +349,8 @@ sub close_tab {
 			if $to_close == 0;
 		
 		# Close the tab
-		CORE::warn "Internal: Not checking if the file needs to be saved.";
+		CORE::warn "Internal: Not checking if the file needs to be saved."
+			if eval{$default_widget_for[$to_close]->isa('Prima::Edit')};
 		splice @tabs, $to_close, 1;
 		splice @default_widget_for, $to_close, 1;
 		$notebook->Notebook->delete_page($to_close);
@@ -313,7 +361,8 @@ sub close_tab {
 		$to_close = qr/$to_close/ unless ref($to_close) eq 'Regex';
 		while ($i < @tabs) {
 			if ($tabs[$i] eq $to_close) {
-				CORE::warn "Internal: Not checking if the file needs to be saved.";
+				CORE::warn "Internal: Not checking if the file needs to be saved."
+					if eval{$default_widget_for[$to_close]->isa('Prima::Edit')};
 				$notebook->Notebook->delete_page($_);
 				splice @default_widget_for, $i, 1;
 				splice @tabs, $i, 1;
@@ -573,51 +622,13 @@ sub my_eval {
 	$REPL::inline->text($old_text);
 }
 
-sub endow_editor_widget {
-	my $widget = shift;
-	
-	# Verify the object
-	croak("endow_editor_widget expects a Prima::Edit widget")
-		unless eval{$widget->isa("Prima::Edit")};
-	
-	# Allow for insertions, deletions, newlines, etc
-	$widget->set(
-		tabIndent => 1,
-		syntaxHilite => 1,
-		wantTabs => 1,
-		wantReturns => 1,
-		wordWrap => 0,
-		autoIndent => 1,
-		cursorWrap => 1,
-	);
-
-	# Update the accelerators.
-	my $accTable = $widget->accelTable;
-
-	# Add some functions to the accelerator table
-	$accTable->insert([
-		# Ctrl-Enter runs the file
-		  ['', '', kb::Return 	| km::Ctrl,  sub{run_file()}				]
-		, ['', '', kb::Enter  	| km::Ctrl,  sub{run_file()}				]
-		# Ctrl-Shift-Enter runs the file and selects the output window
-		, ['', '', kb::Return 	| km::Ctrl | km::Shift,	\&run_file_with_output	]
-		, ['', '', kb::Enter  	| km::Ctrl | km::Shift,	\&run_file_with_output	]
-		# Ctrl-PageUp/PageDown don't work by default, so add them, too:
-		, ['', '', kb::PageUp 	| km::Ctrl,  \&REPL::goto_prev_page				]
-		, ['', '', kb::PageDown | km::Ctrl,  \&REPL::goto_next_page				]
-		]
-		, ''
-		, 0
-	);
-}
-
 # Creates a new text-editor tab and selects it
 sub new_file {
 	my ($page_widget, $index) = REPL::create_new_tab('New File', Edit =>
 		text => '',
 		pack => { fill => 'both', expand => 1, padx => $padding, pady => $padding },
 	);
-	endow_editor_widget($page_widget);
+	REPL::endow_editor_widget($page_widget);
 
 	# Update the default widget for this page:
 	REPL::change_default_widget($index, $page_widget);
