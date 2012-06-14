@@ -91,6 +91,8 @@ our $window = Prima::MainWindow->new(
 			wordWrap => 1,
 			readOnly => 1,
 			backColor => cl::LightGray,
+			font => { name => 'courier new'},
+
 		);
 		# Over-ride the defaults for these:
 		$output->accelTable->insert([
@@ -306,13 +308,14 @@ sub endow_editor_widget {
 	
 	# Allow for insertions, deletions, newlines, etc
 	$widget->set(
-		tabIndent => 1,
+		tabIndent => 4,
 		syntaxHilite => 1,
 		wantTabs => 1,
 		wantReturns => 1,
 		wordWrap => 0,
 		autoIndent => 1,
 		cursorWrap => 1,
+		font => { pitch => fp::Fixed, style => fs::Bold, name => 'courier new'},
 	);
 
 	# Update the accelerators.
