@@ -961,12 +961,14 @@ print join(' ', "If you don't know what you're doing, you can get help by"
 # Run any initialization script #
 #################################
 sub redo_initrc {
-	if (-f $initrc_filename) {
+	my $filename = $initrc_filename if -f $initrc_filename;
+	$filename = "$initrc_filename.pl" if -f "$initrc_filename.pl";
+	if ($filename) {
 		print "Running initialization script\n";
 		# Load the init script and send it to 
-		open my $fh, '<', $initrc_filename;
+		open my $fh, '<', $filename;
 		my $text = do { local( $/ ) ; <$fh> };
-		my_eval($text);
+		my_eval("#line 1 \"$filename\"\n$text");
 		REPL::warn("Errors encountered running the initialization script:\n$@\n")
 			if $@;
 		$@ = '';
@@ -975,7 +977,7 @@ sub redo_initrc {
 		print "No initialization script found\n";
 	}
 }
-redo_initrc if -f $initrc_filename;
+redo_initrc if -f $initrc_filename or -f "$initrc_filename.pl";
 
 run Prima;
 # Remove the logfile. This will not happen with a system failure, which means
