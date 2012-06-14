@@ -918,7 +918,7 @@ sub PRINT {
 sub PRINTF {
 	my $self = shift;
 	my $to_print = sprintf(@_);
-	main::outwindow($self->to_stderr(), @_);
+	REPL::outwindow($self->to_stderr(), @_);
 }
 # This function provides access to the original stdout file handle
 sub print_to_terminal {
