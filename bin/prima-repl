@@ -324,14 +324,14 @@ sub endow_editor_widget {
 	# Add some functions to the accelerator table
 	$accTable->insert([
 		# Ctrl-Enter runs the file
-		  ['', '', kb::Return 	| km::Ctrl,  sub{main::run_file()}				]
-		, ['', '', kb::Enter  	| km::Ctrl,  sub{main::run_file()}				]
+		  ['CtrlReturn', '', kb::Return 	| km::Ctrl,  sub{main::run_file()}				]
+		, ['CtrlEnter', '', kb::Enter  	| km::Ctrl,  sub{main::run_file()}				]
 		# Ctrl-Shift-Enter runs the file and selects the output window
-		, ['', '', kb::Return 	| km::Ctrl | km::Shift,	\&main::run_file_with_output	]
-		, ['', '', kb::Enter  	| km::Ctrl | km::Shift,	\&main::run_file_with_output	]
+		, ['CtrlShiftReturn', '', kb::Return 	| km::Ctrl | km::Shift,	\&main::run_file_with_output	]
+		, ['CtrlShiftEnter', '', kb::Enter  	| km::Ctrl | km::Shift,	\&main::run_file_with_output	]
 		# Ctrl-PageUp/PageDown don't work by default, so add them, too:
-		, ['', '', kb::PageUp 	| km::Ctrl,  \&REPL::goto_prev_page				]
-		, ['', '', kb::PageDown | km::Ctrl,  \&REPL::goto_next_page				]
+		, ['CtrlPageUp', '', kb::PageUp 	| km::Ctrl,  \&REPL::goto_prev_page				]
+		, ['CtrlPageDown', '', kb::PageDown | km::Ctrl,  \&REPL::goto_next_page				]
 		]
 		, ''
 		, 0
