@@ -12,18 +12,18 @@ use constant Unique  => 10;
 use constant All     => 11;
 use constant NoRepeat => 12;
 
-#########################################
+######################################
 # PrimaX::InputHistory::Output::Null #
-#########################################
+######################################
 # A ridiculously simple output handler that does nothing
 package PrimaX::InputHistory::Output::Null;
 sub printout { }
 sub newline_printout { }
 sub new {my $self = {}; return bless $self}
 
-###########################################
-# PrimaX::InputHistory::Output::Simple #
-###########################################
+########################################
+# PrimaX::InputHistory::Output::StdOut #
+########################################
 # The default output handler with which InputHistory works; uses Perl's print
 # statement for output.
 package PrimaX::InputHistory::Output::StdOut;

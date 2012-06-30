@@ -43,12 +43,12 @@ BEGIN {
 my $app_filename = File::Spec->catfile($FindBin::Bin, $FindBin::Script);
 my $version = 0.3;
 
-
 #########################
 # Main Application Code #
 #########################
 
 package REPL;
+my $history_output_handler = PrimaX::InputHistory::Output::REPL->new;
 
 our @text_file_extension_list = (
 		  ['Perl scripts'		=> '*.pl'	]
@@ -106,6 +106,7 @@ our $window = Prima::MainWindow->new(
 		text => '',
 		pack => {fill => 'both', after => $notebook, padx => $padding, pady => $padding},
 		storeType => ih::NoRepeat,
+		outputWidget => $history_output_handler,
 		onCreate => sub {
 			my $self = shift;
 			
@@ -943,6 +944,28 @@ sub to_stderr {
 tie *ERROUT, 'IO::OutWindow::Err';
 # Tie stderr to the new tied file handle
 *main::STDERR = \*ERROUT;
+
+######################################
+# A custom inputHistory Output class #
+######################################
+
+package PrimaX::InputHistory::Output::REPL;
+# Thanks to the tied output, I can simply "print" results and they will
+# go to the output widget
+sub printout {
+	my $self = shift;
+	print @_;
+}
+sub newline_printout {
+	my $self = shift;
+	print "\n" if $output_column != 0;
+	print @_;
+}
+sub new { return bless {} }
+
+###############
+# Final items #
+###############
 
 package main;
 
