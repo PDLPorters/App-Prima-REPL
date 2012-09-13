@@ -91,7 +91,7 @@ our $window = Prima::MainWindow->new(
 			wordWrap => 1,
 			readOnly => 1,
 			backColor => cl::LightGray,
-			font => { name => 'courier new'},
+			font => { name => 'monospace'},
 
 		);
 		# Over-ride the defaults for these:
