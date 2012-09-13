@@ -659,7 +659,7 @@ sub open_image {
 		return unless defined $image;
 	}
 	
-	REPL::create_new_tab(ImageViewer =>
+	REPL::create_new_tab('Image Viewer', ImageViewer =>
 		image => $image,
 		allignment => ta::Center,
 		vallignment => ta::Center,
