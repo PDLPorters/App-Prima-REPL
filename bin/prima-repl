@@ -5,13 +5,17 @@ use warnings;
 use Carp;
 use File::Spec;
 use FindBin;
-use Getopt::Long;
+use Getopt::Long qw( :config no_ignore_case pass_through );
 use Pod::Usage;
 
 BEGIN { # Run this before Prima tries to get X
+    my @include_dirs;
     GetOptions(
         'h|help' => \( my $help ),
+        'I:s' => \@include_dirs,
     );
+    unshift @INC, $_ for @include_dirs, map { $1 if /^-I(.+)/ } @ARGV;
+    @ARGV = grep { !/^-I/ } @ARGV;
     pod2usage(0) if $help;
 };
 
