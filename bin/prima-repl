@@ -414,7 +414,7 @@ $inline->add_notification(PostEval => sub {
 # The help command:
 $inline->add_notification(PressEnter => sub {
 	# See if they asked for help.
-	if ($_[1] =~ /^\s*help\s*(.*)/) {
+	if ($_[1] =~ /^\s*help\s*(.*)/ or $_[1] =~ /^\s*perldoc\s*(.*)/) {
 		get_help($1);
 		$_[0]->clear_event;
 	}
