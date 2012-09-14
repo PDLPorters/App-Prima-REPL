@@ -1037,7 +1037,7 @@ prima-repl - A Perl REPL using Prima
 
 =head1 SYNOPSIS
 
-    prima-repl [<init_file>]
+    prima-repl [-I <lib_dir>] [-M <module>] [<init_file>]
     prima-repl -h
 
 =head1 DESCRIPTION
@@ -1052,6 +1052,15 @@ Specify the name of a Perl file to run to initialize the REPL window. This file 
 new tabs, add widgets, or more. See L<App::Prima::REPL::Help> "RC File and notes".
 
 =head1 OPTIONS
+
+=head2 -I <lib_directory>
+
+Add a directory to find modules in.
+
+=head2 -M <module>
+
+Load a module at startup. Imports can be added using MyMod=foo,bar,baz to import the
+symbols "foo", "bar", and "baz" from the module MyMod.
 
 =head2 -h|--help
 
