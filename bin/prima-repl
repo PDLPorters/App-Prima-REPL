@@ -15,7 +15,7 @@ my $historyLength = 200;	# total number of lines to save to disk
 #use Eval::WithLexicals;
 
 my $DEBUG_OUTPUT = 0;
-my $initrc_filename = 'prima-repl.initrc';
+my $initrc_filename = $ARGV[0] || 'prima-repl.initrc';
 # Load PDL if they have it
 my ($loaded_PDL, $loaded_Prima_Graphics);
 BEGIN {
