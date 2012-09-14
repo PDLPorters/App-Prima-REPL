@@ -895,53 +895,20 @@ sub REPL::outwindow {
 ###############################
 # Tie STDOUT to Output window #
 ###############################
-# Redirect standard output using this filehandle tie. Thanks to 
-# http://stackoverflow.com/questions/387702/how-can-i-hook-into-perls-print
-# for this one.
-package IO::OutWindow;
-use base 'Tie::Handle';
-use Symbol qw<geniosym>;
-sub TIEHANDLE {
-	my $package = shift;
-	return bless geniosym, $package;
-}
 
-sub to_stderr {
-	return 0;
-}
+use App::Prima::REPL::IO::OutWindow;
 
-# Printing to this tied file handle sends the output to the outwindow function.
-sub PRINT {
-	my $self = shift;
-	REPL::outwindow($self->to_stderr(), @_)
-}
-# printf behaves the same as print
-sub PRINTF {
-	my $self = shift;
-	my $to_print = sprintf(@_);
-	REPL::outwindow($self->to_stderr(), @_);
-}
-# This function provides access to the original stdout file handle
-sub print_to_terminal {
-	print main::STDOUT @_;
-}
 # Create the tied file handle that we will reassign
-tie *PRINTOUT, 'IO::OutWindow';
+tie *PRINTOUT, 'App::Prima::REPL::IO::OutWindow';
 # Redirect standard output to the new tied file handle
 select( *PRINTOUT );
 
 ############################################
 # Tie STDERR to Output window and terminal #
 ############################################
-package IO::OutWindow::Err;
-our @ISA = qw(IO::OutWindow);
-# Override the to_stderr function; everything else should fall through via the
-# base class
-sub to_stderr {
-	return 1;
-}
+
 # Create the tied file handle
-tie *ERROUT, 'IO::OutWindow::Err';
+tie *ERROUT, 'App::Prima::REPL::IO::OutWindow::Err';
 # Tie stderr to the new tied file handle
 *main::STDERR = \*ERROUT;
 
