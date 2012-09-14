@@ -2,12 +2,21 @@
 use strict;
 use warnings;
 
-use Prima qw(Buttons Notebooks ScrollWidget Application Edit
-			FileDialog ImageViewer ImageDialog);
 use Carp;
 use File::Spec;
 use FindBin;
+use Getopt::Long;
+use Pod::Usage;
 
+BEGIN { # Run this before Prima tries to get X
+    GetOptions(
+        'h|help' => \( my $help ),
+    );
+    pod2usage(0) if $help;
+};
+
+use Prima qw(Buttons Notebooks ScrollWidget Application Edit
+			FileDialog ImageViewer ImageDialog);
 use PrimaX::InputHistory;
 my $fileName = '.prima.repl.history';
 my $historyLength = 200;	# total number of lines to save to disk
