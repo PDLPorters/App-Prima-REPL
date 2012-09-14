@@ -10,12 +10,21 @@ use Pod::Usage;
 
 BEGIN { # Run this before Prima tries to get X
     my @include_dirs;
+    my @include_modules;
     GetOptions(
         'h|help' => \( my $help ),
         'I:s' => \@include_dirs,
+        'M:s' => \@include_modules,
     );
     unshift @INC, $_ for @include_dirs, map { $1 if /^-I(.+)/ } @ARGV;
-    @ARGV = grep { !/^-I/ } @ARGV;
+    for my $mod ( @include_modules, map { $1 if /^-M(.+)/ } @ARGV ) {
+        my ( $module, $import ) = split /=/, $mod;
+        my @import = $import ? ( split /,/, $import ) : ();
+        # The jiggery-pokery of require $var/import is too much
+        eval "use $module" . ( @import ? " qw(" . join( " ", @import ) . ");" : ";" );
+        die $@ if $@;
+    }
+    @ARGV = grep { !/^-[IM]/ } @ARGV;
     pod2usage(0) if $help;
 };
 
