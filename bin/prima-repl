@@ -91,7 +91,7 @@ sub REPL::simulate_run {
 use App::Prima::REPL::IO::OutWindow;
 
 # Create the tied file handle that we will reassign
-tie *PRINTOUT, 'App::Prima::REPL::IO::OutWindow';
+tie *PRINTOUT, 'App::Prima::REPL::IO::OutWindow' => $repl;
 # Redirect standard output to the new tied file handle
 select( *PRINTOUT );
 
@@ -100,7 +100,7 @@ select( *PRINTOUT );
 ############################################
 
 # Create the tied file handle
-tie *ERROUT, 'App::Prima::REPL::IO::OutWindow::Err';
+tie *ERROUT, 'App::Prima::REPL::IO::OutWindow::Err' => $repl;
 # Tie stderr to the new tied file handle
 *main::STDERR = \*ERROUT;
 
