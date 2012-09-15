@@ -818,6 +818,14 @@ sub REPL::simulate_run {
     $inline->charOffset($old_offset);
 }
 
+# This function provides access to the original stdout file handle
+BEGIN {
+	my $stdout = \*STDOUT;
+	*REPL::print_to_terminal = sub {
+		print $stdout @_;
+	};
+}
+
 # Here is a utility function to print to the output window. Both standard output
 # and standard error are later tied to printing to this interface, so you can
 # just use 'print' or 'say' in all your code and it'll go to this.
@@ -836,7 +844,7 @@ sub REPL::outwindow {
 	s/ \(eval \d+\)// for @lines;
 	# Open the logfile, which I'll print to simultaneously:
 	open my $logfile, '>>', 'prima-repl.logfile';
-	IO::OutWindow::print_to_terminal(@lines) if $DEBUG_OUTPUT or $to_stderr;
+	REPL::print_to_terminal(@lines) if $DEBUG_OUTPUT or $to_stderr;
 	# Go through each line and carriage return, overwriting where appropriate:
 	foreach(@lines) {
 		# If it's a carriage return, set the current column to zero:
