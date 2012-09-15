@@ -47,3 +47,6 @@ sub TIEHANDLE {
 	$self->{to_stderr} = 1;
 	return $self;
 }
+
+1;
+
