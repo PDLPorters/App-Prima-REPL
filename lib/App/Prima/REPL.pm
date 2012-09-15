@@ -58,6 +58,7 @@ has 'debug_output' => (
 has 'history_output_handler' => (
   is => 'ro',
   builder => '_build_history_output_hander',
+  lazy => 1,
 );
 
 sub _build_history_output_hander {
@@ -80,7 +81,8 @@ has 'text_file_extension_list' => (
 # A dialog box that will be used for opening and saving files:
 has 'open_text_dialog' => (
   is => 'rw',
-  buidler => '_build_open_text_dialog',
+  builder => '_build_open_text_dialog',
+  lazy => 1,
 );
 
 sub _build_open_text_dialog {
@@ -108,6 +110,7 @@ sub warn {
 has 'window' => (
   is => 'ro',
   builder => '_build_window',
+  lazy => 1,
 );
 
 sub _build_window {
@@ -123,6 +126,7 @@ sub _build_window {
 has 'notebook' => (
   is => 'ro',
   builder => '_build_notebook',
+  lazy => 1,
 );
 
 sub _build_notebook {
@@ -137,6 +141,7 @@ sub _build_notebook {
 has 'output' => (
   is => 'ro',
   builder => '_build_output',
+  lazy => 1,
 );
 
 sub _build_output {
@@ -165,10 +170,13 @@ sub _build_output {
 has 'inline' => (
   is => 'ro',
   builder => '_build_inline',
+  lazy => 1,
 );
 
 sub _build_inline {
 	my $self = shift;
+	my $notebook = $self->notebook;
+	my $padding = $self->padding;
 
 	#TODO these need to be more accessible
 	my $fileName = '.prima.repl.history';
@@ -177,7 +185,7 @@ sub _build_inline {
 	my $inline = PrimaX::InputHistory->create(
 		owner => $self->window,
 		text => '',
-		pack => {fill => 'both', after => $self->notebook, padx => $self->padding, pady => $self->padding},
+		pack => {fill => 'both', after => $notebook, padx => $padding, pady => $padding},
 		storeType => ih::NoRepeat,
 		outputWidget => $self->history_output_handler,
 		onCreate => sub {
