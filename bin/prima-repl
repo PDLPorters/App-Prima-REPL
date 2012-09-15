@@ -545,7 +545,7 @@ $inline->add_notification(Evaluate => sub {
 	main::my_eval($_[1]);
 });
 
-=begin consideration
+=for comment
 
 # I used to issue warnings when I found 'my' in the text to be eval'd. This was
 # a means to allow for such lexical variables, but I've decided to not even
@@ -581,8 +581,6 @@ $inline->add_notification(Evaluate => sub {
 	$lexicals_allowed = 0
 	
 });
-
-=end consideration
 
 =cut
 
