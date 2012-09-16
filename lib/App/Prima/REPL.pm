@@ -3,6 +3,16 @@ use warnings;
 
 package App::Prima::REPL;
 
+BEGIN {
+  # This should be done as early as possible, prima-repl should do it first but if not
+  unless (__PACKAGE__->can('print_to_terminal')) {
+    my $stdout = \*STDOUT;
+    *App::Prima::REPL::print_to_terminal = sub {
+      print $stdout @_;
+    };
+  }
+}
+
 our $VERSION = 0.03;
 use Moo;
 
@@ -677,7 +687,7 @@ sub outwindow {
 	s/ \(eval \d+\)// for @lines;
 	# Open the logfile, which I'll print to simultaneously:
 	open my $logfile, '>>', 'prima-repl.logfile';
-	REPL::print_to_terminal(@lines) if $self->debug_output or $to_stderr;
+	print_to_terminal(@lines) if $self->debug_output or $to_stderr;
 	# Go through each line and carriage return, overwriting where appropriate:
 	foreach(@lines) {
 		# If it's a carriage return, set the current column to zero:
@@ -733,11 +743,36 @@ sub outwindow {
 	$output->cursor_cend;
 }
 
+# Useful function to simulate user input. This is useful for initialization
+# scripts when you want to run commands and put them into the command history
+sub simulate_run {
+    my $self = shift;
+    my $inline = $self->inline;
+
+    my $command = shift;
+    # Get the current content of the inline and cursor position:
+    my $old_text = $inline->text;
+    my $old_offset = $inline->charOffset;
+    # Set the content to the new command:
+    $inline->text($command);
+    # run it:
+    $inline->PressEnter();
+    # put the original content back on the inline:
+    $inline->text($old_text);
+    $inline->charOffset($old_offset);
+}
+
+sub run {
+  Prima->run;
+}
+
 ################################################################################
 #                                Handling Evals                                #
 ################################################################################
 
 =for comment
+
+#note that this implementation predated OO-izing
 
 # I used to issue warnings when I found 'my' in the text to be eval'd. This was
 # a means to allow for such lexical variables, but I've decided to not even

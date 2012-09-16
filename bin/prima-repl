@@ -57,7 +57,7 @@ BEGIN {
 
 	# This function provides access to the original stdout file handle
 	my $stdout = \*STDOUT;
-	*REPL::print_to_terminal = sub {
+	*App::Prima::REPL::print_to_terminal = sub {
 		print $stdout @_;
 	};
 }
@@ -78,6 +78,7 @@ my $repl = App::Prima::REPL->new(
   debug_output => $DEBUG_OUTPUT,
 );
 my $commands = App::Prima::REPL::Commands->new( repl => $repl );
+$commands->alias_functions;
 
 ################################
 # Output handling and mangling #
@@ -85,25 +86,6 @@ my $commands = App::Prima::REPL::Commands->new( repl => $repl );
 
 # Set autoflush on stdout:
 $|++;
-
-# Useful function to simulate user input. This is useful for initialization
-# scripts when you want to run commands and put them into the command history
-sub REPL::simulate_run {
-    my $self = shift;
-    my $inline = $self->inline;
-
-    my $command = shift;
-    # Get the current content of the inline and cursor position:
-    my $old_text = $inline->text;
-    my $old_offset = $inline->charOffset;
-    # Set the content to the new command:
-    $inline->text($command);
-    # run it:
-    $inline->PressEnter();
-    # put the original content back on the inline:
-    $inline->text($old_text);
-    $inline->charOffset($old_offset);
-}
 
 ###############################
 # Tie STDOUT to Output window #
@@ -175,7 +157,7 @@ sub redo_initrc {
 		open my $fh, '<', $filename;
 		my $text = do { local( $/ ) ; <$fh> };
 		my_eval("#line 1 \"$filename\"\n$text");
-		REPL::warn("Errors encountered running the initialization script:\n$@\n")
+		$repl->warn("Errors encountered running the initialization script:\n$@\n")
 			if $@;
 		$@ = '';
 	}
@@ -185,7 +167,7 @@ sub redo_initrc {
 }
 redo_initrc if -f $initrc_filename or -f "$initrc_filename.pl";
 
-run Prima;
+$repl->run; # Prima->run
 # Remove the logfile. This will not happen with a system failure, which means
 # that the logfile is 'saved' only when there was a problem. The special case of
 # the user typing 'exit' at the prompt is handled in pressed_enter().
