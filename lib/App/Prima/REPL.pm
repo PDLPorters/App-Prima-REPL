@@ -284,11 +284,11 @@ sub goto_page {
 
 sub goto_next_page {
 	my $self = shift;
-	goto_page($self->notebook->pageIndex + 1);
+	$self->goto_page($self->notebook->pageIndex + 1);
 }
 sub goto_prev_page {
 	my $self = shift;
-	goto_page($self->notebook->pageIndex - 1);
+	$self->goto_page($self->notebook->pageIndex - 1);
 }
 sub goto_output {
 	my $self = shift;
