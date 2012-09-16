@@ -11,6 +11,26 @@ has 'repl' => (
   required => 1,
 );
 
+sub alias_functions {
+  my $self = shift;
+  my $namespace = shift || 'main';
+
+  my @methods = qw/ 
+    new_file open_image run_file_with_output 
+    open_file init_file save_file run_file
+    name clear my_eval
+  /;
+
+  no strict 'refs';
+  foreach my $method (@methods) {
+    my $subref = __PACKAGE__->can($method) or die "Cannot alias unfound method: $method";
+    *{ $namespace . '::' . $method } = sub { unshift @_, $self; goto $subref };
+  }
+
+  # Convenience function for PDL folks.
+  *{ $namespace . '::p' } = sub { print @_ };
+}
+
 # Creates a new text-editor tab and selects it
 sub new_file {
 	my $self = shift;
@@ -203,9 +223,6 @@ sub clear {
 	$repl->output_column(0);
 }
 
-# Convenience function for PDL folks.
-sub p {	print @_ }
-
 # eval function
 sub my_eval {
 	my $self = shift;
@@ -220,7 +237,7 @@ sub my_eval {
 	
 	# Process the text with NiceSlice if they try to use it:
 	if ($text =~ /use PDL::NiceSlice/) {
-		if ($self->repl->has_PDL) {
+		if ($repl->has_PDL) {
 			$text = PDL::NiceSlice->perldlpp($text);
 		}
 		else {
