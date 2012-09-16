@@ -10,7 +10,7 @@ my $build = Module::Build->new(
 		'Module::Build' => 0.28,
 	},
 	requires => {
-		Moo => '1.0'
+		Moo => '1.0',
 		Prima	=> '1.33',
 	},
 	recommends => {
