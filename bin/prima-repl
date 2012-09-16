@@ -3,8 +3,6 @@ use strict;
 use warnings;
 
 use Carp;
-use File::Spec;
-use FindBin;
 use Getopt::Long qw( :config no_ignore_case pass_through );
 use Pod::Usage;
 
@@ -72,7 +70,7 @@ use App::Prima::REPL;
 use App::Prima::REPL::Commands;
 
 my $repl = App::Prima::REPL->new( 
-  default_help_page => $app_filename,
+  default_help_page => 'App::Prima::REPL::Help',
   has_PDL => $loaded_PDL,
   has_Prima_Graphics => $loaded_Prima_Graphics,
   debug_output => $DEBUG_OUTPUT,
