@@ -71,6 +71,11 @@ has 'history_output_handler' => (
   lazy => 1,
 );
 
+has 'logfile' => (
+  is => 'ro',
+  default => sub { 'prima-repl.logfile' },
+);
+
 sub _build_history_output_hander {
   my $self = shift;
   return PrimaX::InputHistory::Output::REPL->new( $self );
@@ -579,7 +584,7 @@ sub setup_inline_events {
 	# logfile handling for the exit command:
 	$inline->add_notification(PressEnter => sub {
 		if ($_[1] =~ /^\s*exit\s*$/) {
-			unlink 'prima-repl.logfile';
+			unlink $self->logfile;
 			exit;
 		}
 	});
@@ -686,7 +691,7 @@ sub outwindow {
 	# Remove useless parts of error messages (which refer to lines in this code)
 	s/ \(eval \d+\)// for @lines;
 	# Open the logfile, which I'll print to simultaneously:
-	open my $logfile, '>>', 'prima-repl.logfile';
+	open my $logfile, '>>', $self->logfile;
 	print_to_terminal(@lines) if $self->debug_output or $to_stderr;
 	# Go through each line and carriage return, overwriting where appropriate:
 	foreach(@lines) {

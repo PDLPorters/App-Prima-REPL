@@ -169,7 +169,7 @@ $repl->run; # Prima->run
 # Remove the logfile. This will not happen with a system failure, which means
 # that the logfile is 'saved' only when there was a problem. The special case of
 # the user typing 'exit' at the prompt is handled in pressed_enter().
-unlink 'prima-repl.logfile';
+unlink $repl->logfile;
 
 __END__
 
