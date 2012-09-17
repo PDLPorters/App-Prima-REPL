@@ -34,23 +34,13 @@ C<cpanm>. Instead, do the following:
 
 =item install Prima
 
-Prima is available on CPAN, but the version available on CPAN has a bug with
-closing tabs. I pointed this out to Dmitry while I was working on this app
-and he quickly fixed it, but the correctly working code is only available
-from the development sources. If you are on a Linux machine B<you must
-install your X11 header files>, which are considered C<dev> files on many
-flavors of Linux. If you are a Windows or Mac user, you should be fine as
-long as you have a C compiler for your system. And everybody will need git.
+Prima is available on CPAN, you will need version 1.33. If you are on a
+Linux machine B<you must install your X11 header files>, which are
+considered C<dev> files on many flavors of Linux. If you are a Windows or
+Mac user, you should be fine as long as you have a C compiler for your
+system.
 
-Download Prima from Github:
-
- git clone git://github.com/dk/Prima.git
- cd Prima
- perl Makefile.PL
- make
- make test  # there may be a couple of errors
-            # I recommend igoring them
- make install
+There may be a couple of errors on test stage. I recommend to ignore them.
 
 Note for Mac users: I have found that Prima will fail to build/install if I
 have libjpeg or libtiff installed. That's a real bummer, and it's something
