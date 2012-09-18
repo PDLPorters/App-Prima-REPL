@@ -181,6 +181,16 @@ sub _build_output {
   return $output;
 }
 
+has 'history_filename' => (
+  is => 'ro',
+  default => sub{ '.prima.repl.history' },
+);
+
+has 'max_history_items' => (
+  is => 'ro',
+  default => sub { 200 },
+);
+
 # Add the eval line:
 has 'inline' => (
   is => 'ro',
@@ -193,9 +203,8 @@ sub _build_inline {
 	my $notebook = $self->notebook;
 	my $padding = $self->padding;
 
-	#TODO these need to be more accessible
-	my $fileName = '.prima.repl.history';
-	my $historyLength = 200;	# total number of lines to save to disk
+	my $fileName = $self->history_filename;
+	my $historyLength = $self->max_history_items;
 
 	my $inline = PrimaX::InputHistory->create(
 		owner => $self->window,
