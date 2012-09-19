@@ -47,7 +47,7 @@ has 'default_help_page' => (
 
 has 'emulate_simple' => (
   is => 'rw',
-  default => sub{1}, #TODO is this correct?
+  default => sub{0},
 );
 
 has 'has_PDL' => (
