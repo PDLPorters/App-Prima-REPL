@@ -13,6 +13,8 @@ has 'repl' => (
 
 sub alias_functions {
   my $self = shift;
+  my $repl = $self->repl;
+
   my $namespace = shift || 'main';
 
   my @methods = qw/ 
@@ -29,6 +31,10 @@ sub alias_functions {
 
   # Convenience function for PDL folks.
   *{ $namespace . '::p' } = sub { print @_ };
+
+  # Provide access to the REPL object
+  # i.e. commands that were previously REPL:: now should be REPL->
+  *{ $namespace . '::REPL' } = sub { $repl };
 }
 
 # Creates a new text-editor tab and selects it
