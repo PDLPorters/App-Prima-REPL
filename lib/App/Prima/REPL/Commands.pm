@@ -20,7 +20,7 @@ sub alias_functions {
   my @methods = qw/ 
     new_file open_image run_file_with_output 
     open_file init_file save_file run_file
-    name clear my_eval
+    name clear
   /;
 
   no strict 'refs';
@@ -35,6 +35,13 @@ sub alias_functions {
   # Provide access to the REPL object
   # i.e. commands that were previously REPL:: now should be REPL->
   *{ $namespace . '::REPL' } = sub { $repl };
+
+  # my_eval must use the namespace of the calling package
+  *{ $namespace . '::my_eval' } = sub { 
+    unshift @_, $self; 
+    push @_, $namespace; 
+    goto &my_eval;
+  };
 }
 
 # Creates a new text-editor tab and selects it
@@ -232,9 +239,10 @@ sub clear {
 # eval function
 sub my_eval {
 	my $self = shift;
+	my ($text, $package) = @_;
+
 	my $repl = $self->repl;
 
-	my $text = shift;
 	# Gray the line entry:
 	$repl->inline->enabled(0);
 	# replace the entry text with the text 'working...' and save the old stuff
@@ -258,6 +266,9 @@ sub my_eval {
 	no strict;
 #	eval { $eval_container->eval($text) };
 #	warn $@ if $@;
+
+	# if specified, evaluate the string in the specified package
+	$text = "package $package;\n$text" if $package;
 	eval $text;
 	use strict;
 	
