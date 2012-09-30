@@ -32,8 +32,9 @@ sub PRINT {
 # printf behaves the same as print
 sub PRINTF {
 	my $self = shift;
-	my $to_print = sprintf(@_);
-	my $outwindow = $self->outwindow($self->to_stderr, @_);
+	my $format = shift;
+	my $to_print = sprintf($format, @_);
+	$self->PRINT($to_print);
 }
 
 package App::Prima::REPL::IO::OutWindow::Err;
