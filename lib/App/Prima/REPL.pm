@@ -780,51 +780,6 @@ sub run {
   Prima->run;
 }
 
-################################################################################
-#                                Handling Evals                                #
-################################################################################
-
-=for comment
-
-#note that this implementation predated OO-izing
-
-# I used to issue warnings when I found 'my' in the text to be eval'd. This was
-# a means to allow for such lexical variables, but I've decided to not even
-# worry about it.
-#my $lexicals_allowed = 0;
-#sub allow_lexicals { $lexicals_allowed = 1 };
-	else {
-		# A command to be eval'd. Lexical variables don't work, so croak if I
-		# see one. This could probably be handled better.
-		if ($in_text =~ /my/ and not $lexicals_allowed) {
-			$@ = join(' ', 'It looks to me like you\'re trying to use a lexical variable.'
-					, 'Lexical variables not allowed in the line evaluator'
-					, 'because you cannot get to them after the current line.'
-					, 'If I\'m wrong, or if you really want to use lexical variables,'
-					, "do this:\n"
-					, "   allow_lexicals; <command-here>"
-					);
-		}
-		else {
-			my $text_to_eval = $in_text;
-			# This appears to be giving trouble. Slices do not appear to be
-			# evaluated correctly. working here
-			$text_to_eval = PDL::NiceSlice->perldlpp($in_text) if ($loaded_PDL);
-			main::my_eval($text_to_eval);
-		}
-	
-		# If error, print that to the output
-		if ($@) {
-			REPL::warn($@);
-			$@ = '';
-		}
-	}
-	$lexicals_allowed = 0
-	
-});
-
-=cut
-
 =head1 NAME
 
 App::Prima::REPL - a GUI REPL written with Prima for the PDL community.
