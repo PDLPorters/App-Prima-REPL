@@ -626,7 +626,7 @@ sub setup_graphics {
 						unless @$arg == 2;
 				
 					# Apparently we're good to go so save the sizes:
-					$self->default_sizes = $arg;
+					$self->default_sizes( $arg );
 				}
 			}
 		}
