@@ -18,11 +18,12 @@ BEGIN { # Run this before Prima tries to get X
     );
     unshift @INC, $_ for @include_dirs, map { $1 if /^-I(.+)/ } @ARGV;
     for my $mod ( @include_modules, map { $1 if /^-M(.+)/ } @ARGV ) {
+        next unless $mod;
         my ( $module, $import ) = split /=/, $mod;
         my @import = $import ? ( split /,/, $import ) : ();
         # The jiggery-pokery of require $var/import is too much
         eval "use $module" . ( @import ? " qw(" . join( " ", @import ) . ");" : ";" );
-        die $@ if $@;
+        die "Error '$@' when loading module '$module'" if $@;
     }
     @ARGV = grep { !/^-[IM]/ } @ARGV;
     pod2usage(0) if $help;
