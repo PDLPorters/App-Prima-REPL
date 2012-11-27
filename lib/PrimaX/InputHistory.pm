@@ -54,6 +54,27 @@ sub new {
 	return bless $self
 }
 
+######################################
+# A custom inputHistory Output class #
+######################################
+
+package PrimaX::InputHistory::Output::REPL;
+# Thanks to the tied output, I can simply "print" results and they will
+# go to the output widget
+sub printout {
+	my $self = shift;
+	print @_;
+}
+sub newline_printout {
+	my $self = shift;
+	print "\n" if $self->{repl}->output_column != 0;
+	print @_;
+}
+sub new { 
+  my $class = shift;
+  return bless { repl => shift || die }, $class; 
+}
+
 =head1 NAME
 
 PrimaX::InputHistory - an input line with input history navigation
