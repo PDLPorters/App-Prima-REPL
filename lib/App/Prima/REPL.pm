@@ -441,7 +441,7 @@ sub endow_editor_widget {
 		wordWrap => 0,
 		autoIndent => 1,
 		cursorWrap => 1,
-		font => { pitch => fp::Fixed, style => fs::Bold, name => 'courier new'},
+		font => { name => 'monospace' },
 	);
 
 	# Update the accelerators.
