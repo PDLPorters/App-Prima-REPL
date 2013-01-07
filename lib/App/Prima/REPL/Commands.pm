@@ -199,7 +199,7 @@ sub run_file {
 	# Get the text from the multiline and run it:
 	my $text = $repl->default_widget_for->[$page]->text;
 
-	$self->my_eval($text);
+	$self->my_eval($text, 'main');
 
 	# If error, switch to the console and print it to the output:
 	if ($@) {
