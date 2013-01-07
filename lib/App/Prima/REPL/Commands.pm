@@ -270,6 +270,7 @@ sub my_eval {
 	# if specified, evaluate the string in the specified package
 	$text = "package $package;\n$text" if $package;
 	eval $text;
+	$repl->warn($@) if $@;
 	use strict;
 	
 	# Re-enable input:
