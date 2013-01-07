@@ -597,7 +597,13 @@ sub setup_inline_events {
 			exit;
 		}
 	});
-
+	
+	# NiceSlice handling
+	if ($self->has_PDL) {
+		$inline->add_notification(PressEnter => sub {
+			$_[1] = PDL::NiceSlice->perldlpp($_[1]);
+		});
+	}
 }
 
 ###############################################################################
