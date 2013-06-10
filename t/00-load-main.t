@@ -1,6 +1,6 @@
 #!perl
 
-use Test::More tests => 1;
+use Test::More;
 
 BEGIN {
     use_ok( 'App::Prima::REPL' )
@@ -10,4 +10,4 @@ BEGIN {
 
 }
 
-diag( "Testing App::Prima::REPL $App::Prima::REPL::VERSION, Perl $], $^X" );
+note( "Testing App::Prima::REPL $App::Prima::REPL::VERSION, Perl $], $^X" );
