@@ -11,3 +11,4 @@ BEGIN {
 }
 
 note( "Testing App::Prima::REPL $App::Prima::REPL::VERSION, Perl $], $^X" );
+done_testing;

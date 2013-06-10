@@ -13,6 +13,7 @@ my $build = Module::Build->new(
 		Moo => '1.0',
 		Prima	=> '1.33',
 	},
+	recursive_test_files => 1,
 	recommends => {
 		'PDL::Graphics::Prima' => '0',
 		'PDL' => '0',

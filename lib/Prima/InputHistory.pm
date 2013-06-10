@@ -131,6 +131,9 @@ sub init {
 		$self->{$_} = $profile{$_};
 	}
 	
+	# currentLine needs to be initialized:
+	$self->{currentLine} = 0;
+	
 	# Store the history and revisions:
 	$self->currentRevisions([]);
 	$self->history($profile{history});
@@ -165,15 +168,7 @@ sub move_line {
 		if $requested_move eq 'pgdn';
 	
 	# Determine the requested line number. (currentLine counts backwards)
-	my $line_number = $self->currentLine() - $requested_move;
-	
-	# Don't cycle:
-	my $history_length = scalar @{$self->history};
-	$line_number = 0 if $line_number < 0;
-	$line_number = $history_length if $line_number > $history_length;
-	
-	# and go there
-	$self->currentLine($line_number);
+	$self->currentLine($self->currentLine() + $requested_move);
 }
 
 
@@ -306,23 +301,19 @@ sub currentLine {
 	# Note the end-of-line position by zero:
 	$curr_offset = 0 if $curr_offset == length($self->text);
 	
-	# make sure the requested line makes sense; cycle if it doesn't, and just
-	# set to zero if there is no history:
-	my $last_line = scalar @{$self->history};
-	if ($last_line) {
-		$line_number += $last_line while $line_number < 0;
-		$line_number -= $last_line while $line_number > $last_line;
-	}
-	else {
-		$line_number = 0;
-	}
+	# make sure the requested line makes sense; set to zero if there is
+	# no history:
+	my $history_length = scalar @{$self->history};
+	$line_number = 0 if $line_number < 0;
+	$line_number = $history_length if $line_number > $history_length;
 	
 	# Set self's current line:
 	$self->{currentLine} = $line_number;
 	
 	# Load the text using the Orcish Maneuver:
-	my $new_text = $self->currentRevisions->[$line_number]
-						//= $self->history->[-$line_number]; #/
+	my $new_text = defined $self->currentRevisions->[$line_number]
+			? $self->currentRevisions->[$line_number]
+			: $self->history->[-$line_number];
 	$self->text($new_text);
 	
 	# Put the cursor at the previous offset. However, if the previous offset
@@ -636,6 +627,24 @@ Note: it seems to me that this should also be open to taking a subref,
 which would perform whatever custom filter/sort is desired. Presently, this
 setting effects storage, so it is called just after the user presses enter.
 If this behavior sounds interesting to you, let me know and I will add it.
+
+=back
+
+=head2 Methods
+
+=over
+
+=item move_line
+
+This method moves through history using (possibly named) relative moves.
+Positive numbers move back in time, negative numbers move forward in time.
+(Yeah, it's kinda weird, but it makes the rest of it eaiser. I swear.)
+Calling C<move_line> with 1 will move back in history by one step.
+
+The meaning of up and down as forward or backward in time depends on the
+application. However, having set C<pastIs> to either C<ih::Up> or C<ih::Down>,
+you can call C<move_line> with the strings 'up', 'down', 'pgup', or 'pgdn'
+and get the correct behavior.
 
 =back
 

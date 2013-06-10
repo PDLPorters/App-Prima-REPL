@@ -17,8 +17,7 @@ our $VERSION = 0.03;
 use Moo;
 
 use Prima qw(Buttons Notebooks ScrollWidget Application Edit
-			FileDialog ImageViewer ImageDialog);
-use PrimaX::InputHistory;
+			FileDialog ImageViewer ImageDialog InputHistory);
 
 has 'output_line_number' => (
   is => 'rw',
