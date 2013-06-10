@@ -1,7 +1,6 @@
  use strict;
  use warnings;
- use Prima qw(Application);
- use PrimaX::InputHistory;
+ use Prima qw(Application InputHistory);
  
  # A simple repl that prints the output to the screen
  
@@ -12,7 +11,7 @@
  
  my $file_name = 'my_history.txt';
  my $history_length = 10;
- my $inline = PrimaX::InputHistory->create(
+ my $inline = Prima::InputHistory->create(
      owner => $window,
      text => '',
      pack => {fill => 'both'},
@@ -49,6 +48,29 @@
          }
          close $fh;
      },
+ onTabComplete => sub {
+     my ($self, $left, $selection, $right) = @_;
+     
+     # Are there any files that match the description?
+     # If not, let the remaining notifications have their say.
+     my @files = glob("$selection*");
+     return unless @files;
+     
+     # We found something, so clear the event
+     $self->clear_event;
+     
+     if (@files == 1) {
+         # If there's only one item, complete it
+         $self->text($left . $files[0] . $right);
+         # Put the cursor at the end of the filename
+         $self->charOffset(length($left . $files[0]));
+     }
+     else {
+     	 # Otherwise print the options
+     	 $self->outputHandler->newline_printout(
+     	     join(' | ', @files), "\n");
+     }
+ },
  );
  
  print "Press Up/Down, Page-Up/Page-Down to see your input history\n";

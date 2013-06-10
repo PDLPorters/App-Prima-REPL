@@ -106,8 +106,9 @@ sub profile_default
 		, ['Earlier Lines', 'Page Up', kb::PageUp, sub {$_[0]->move_line('pgup')}]
 		, ['Later Lines', 'Page Down', kb::PageDown, sub {$_[0]->move_line('pgdn')}]
 		# Enter runs the line
-		, ['Run', 'Return', kb::Return, sub {$_[0]->PressEnter}]
-		, ['Run', 'Enter', kb::Enter, sub {$_[0]->PressEnter}]
+		, ['Run', 'Return', kb::Return, sub {$_[0]->press_enter($_[0]->text)}]
+		, ['Run', 'Enter', kb::Enter, sub {$_[0]->press_enter($_[0]->text)}]
+		, ['TabComplete', 'Tab', kb::Tab, \&do_tab_complete]
 	);
 
 	return {
@@ -345,25 +346,25 @@ sub currentLine {
 # clear_event() method on this object.
 {
 	# Keep the notifications hash in its own lexically scoped block so that
-	# other's can't mess with it (at least, not without using PadWalker or some
-	# such).
+	# other's can't mess with it.
 	my %notifications = (
 		%{Prima::InputLine-> notification_types()},
 		PressEnter => nt::Request,
 		Evaluate => nt::Action,
 		PostEval => nt::Request,
+		TabComplete => nt::Request,
 	);
 	
 	sub notification_types { return \%notifications }
 }
 
-# Issues the on_Evaluate notification. The default evaluation is pretty lame -
-# it just prints the result of evaling the text using the print command.
-sub Evaluate {
+# Simulates an Evaluate event with the supplied text. The default evaluation
+# is pretty lame - it just prints the result of evaling the text using the
+# print command.
+sub evaluate {
 	my ($self, $text) = @_;
 	$_[0]->notify('Evaluate', $text);
 }
-
 sub on_evaluate {
 	my ($self, $text) = @_;
 	my $results = eval ($text);
@@ -371,35 +372,50 @@ sub on_evaluate {
 	$self->outputHandler->newline_printout('undef') if not defined $results;
 }
 
-# Issues the on_PostEval notification.
-sub PostEval {
-	$_[0]->notify('PostEval');
-}
-
-# The default notification is to do nothing:
-sub on_posteval {}
-
-# Issues the on_Enter notification, which starts with the class's method. The
-# return value here is important and determines whether or not to evaluate the
-# result. Evaluation can be prevented by a handler by calling the clear_event
-# method on the InputHistory object from within the handler.
-sub PressEnter {
+# This is the method to kick-off tab completion. It splits the input line's
+# text into left, selected, and right, and issues the notification with
+# these three pieces of text.
+sub do_tab_complete {
 	my $self = shift;
-	# Get a copy of the text from the widget.
+	# Get the text in three buckets: left of selection, selection, and
+	# right of selection.
+	my ($start, $stop) = $self->selection;
 	my $text = $self->text;
-	# Call the hooks, allowing them to modify the text as they go:
-	my $needs_to_eval = $self->notify('PressEnter', $text);
-	$self->Evaluate($text) if $needs_to_eval;
-	$self->PostEval($text);
+	my $left = substr $text, 0, $start;
+	my $selected = substr $text, $start, $stop - $start;
+	my $right = substr $text, $stop;
+	
+	$self->tab_complete($left, $selected, $right);
 }
 
-# This is the object's method for handling PressEnter events. Its job is to
-# handle all of the history-related munging. It does not change the contents of
-# the text, so it is safe to unpack the text. (Hooks that intend to modify the
-# text must work directly with $_[1].)
+sub tab_complete {
+	my $self = shift;
+	croak('tab_complete needs three arguments') unless @_ == 3;
+	
+	# Issue the notification
+	$self->notify('TabComplete', @_);
+}
+
+# Simulates/initiates the PressEnter notification, which starts with the
+# class's method. Evaluation can be prevented by a handler by calling the
+# clear_event method on the InputHistory object from within the handler.
+sub press_enter {
+	my ($self, $text) = @_;
+	# Call the hooks, allowing them to modify the text as they go:
+	my $needs_to_eval = $self->notify(PressEnter => $text);
+	$self->notify(Evaluate => $text) if $needs_to_eval;
+	$self->notify('PostEval');
+}
+
+# This is the object's default method for handling PressEnter events. Its
+# job is to handle all of the history-related munging. It does not change
+# the contents of the text, so it is safe to unpack the text. Because this
+# the class's default handler, it always gets called first; derived classes
+# that want to provide different default behavior must be sure to handle the
+# history corretly, or call this (SUPER) method.
 #
-# Additional PressEnter handlers are called after this one and can be added with
-# $input_widget->add_notification(PressEnter => sub {});
+# Additional PressEnter handlers are called after this one and can be added
+# with $input_widget->add_notification(PressEnter => sub {});
 sub on_pressenter {
 	my ($self, $text) = @_;
 
@@ -442,7 +458,8 @@ __END__
 
 =head1 NAME
 
-Prima::InputHistory - an input line with evaluation and input history navigation
+Prima::InputHistory - an input line with evaluation, input history
+navigation, and tab completion hooks
 
 =head1 SYNOPSIS
 
@@ -505,64 +522,123 @@ Prima::InputHistory - an input line with evaluation and input history navigation
 
 =head1 DESCRIPTION
 
-Prima::InputHistory is like a normal InputLine that also knows about user
-input history. Although originally written as part of a REPL
-(Run-Eval-Print-Loop), this can be useful for any sort of input where a user
-may want to refer to previous input values.
+C<Prima::InputHistory> is like a normal L<InputLine|Prima::InputLine> that
+also knows about user input history. Although originally written as part of
+a REPL (Run-Eval-Print-Loop), this can be useful for any sort of input where
+a user may want to refer to previous input values. The most common examples
+of input history are the URL and search input lines in browsers. Also, most
+console prompts allow you to go back through commands already typed using
+cursor keys for navigation. Many console prompts support filename or command
+completion when you press the "Tab" key.
 
 The widget is designed with full REPL interests in mind but can easily be
-tweaked to fit a wide variety of input history interaction. Concepts
-supported include:
+tweaked or streamlined to fit a wide variety of input history and user
+interaction. Supported concepts include:
 
 =over
 
-=item Different kinds of history tracking
+=item How do we track input history?
 
-Sometimes it makes sense to track every entry in order. Sometimes it makes
-sense to track everything in order, but to suppress consecutive copies of
-the same line. Sometimes it makes sense to only track unique entries. All of
-these options are available with history tracking.
+Do you want to track every entry, or just the unique entries? Or perhaps you
+just want to suppress consecutive duplicates?
 
 =item Which way is history?
 
-For many forms on interaction, previous entries arise by pressing "down",
-and so history goes down. Sometimes, it makes sense for the most recent
-entry to be "up", and so history goes up.
+You can choose whether your user presses "up" or "down" to get to previous
+commands.
+
+=item How do we tab-complete?
+
+The widget is sensitive to the user pressing the "Tab" key and you can add
+custom hooks for tab completion.
 
 =item What to do when the user presses Enter?
 
-I found that the REPL needed a three-stage command execution. For many
-situations, that would be overkill, but the three-stage approach gives you
-full control and customizability for how your input line responds to the
-user saying "Go"
+How do you want to respond when the use finally says "Go"? C<InputHistory>
+implements a three-stage command execution chain, providing extensive
+control and flexibility.
 
-=item Where do the results go?
+=item What results do we print, and where?
 
-REPLs expect to display the command that are issued and the results of their
-calculations. If you do not need this sort of functionality, you can simply
-use the "Null" output handler (C<ih::Null>), which quietly ignores all print
-statements it is asked to make. Or, you can provide your own custom object
-to handle the print statements, perhaps for logging purposes.
+REPLS usually show what was typed and how the system responded. Command
+prompts typically only show what was typed and what was printed during the
+execution of the command, suppressing the return value. Browser URL bars do
+not need any this.
 
 =back
 
-As with all other Prima widgets, you can control the behavior of the widget
-both by modifying various properties and by providing custom callbacks. You
-can also interact with the widget programmatically by getting and setting
-properties as well as issuing events.
+By allowing you to provide distinct answers to all of these questions,
+C<InputHistory> provides a powerful widget for line-based user interaction.
 
-One rather unusual aspect of InputHistory is in the output handling. In an
-effort to provide useful defaults, an easy way to turn things off, and a
-general mechanism to provide sophisticated handling if so desired,
-InputHistory have an L<outputHandler|/outputHandler> property. This must be
-one of the two output handler constants, either C<ih::StdOut> or C<ih::Null>,
-or it must be an object that knows how to C<command_printout> and
-C<newline_printout>. The first method is called with the original text when
+=head2 History and Navigation
+
+Previous entries are stored in the L<history|/history> property, which is
+simply an arrayref of strings. The history is collected in chronological
+order, which means that these will print the oldest and most recent commands:
+
+ print "print oldest command in history: ", $widget->history->[0], "\n";
+ print "most recent command: ", $widget->history->[-1], "\n";
+
+By pressing the "Up", "Down", "PageUp", and "PageDown" keys, the user
+can change the contents of their L<InputLine|/Prima::InputLine> to show what
+they have already typed. They can alter these lines and press "Enter" to
+issue a new command. The modified line will be added to the bottom of the
+historical record, but the modifications will not alter the historical
+record of previous commands. The C<move_line> method provides programmatic
+interaction similar to the keyboard navigation, and you can programmatically
+issue a C<PressEnter> event, too:
+
+ Keyboard Input   Equivalent Method Call
+ --------------   --------------------------
+ Up               $widget->move_line('up')
+ Down             $widget->move_line('down')
+ PageUp           $widget->move_line('pgup')
+ PageDown         $widget->move_line('pgdn')
+ Enter/Return     $widget->PressEnter
+
+The C<move_line> method also accepts numerical input. Positive numbers move
+the user's inputline deeper into the historical record, and negative numbers
+move the user's inputline closer to the most recent commands. Similarly,
+you can set the L</currentLine> to indicate which line in history you
+want to view, B<relative to the most recent command>:
+
+ # Select most recently executed command
+ $widget->currentLine(1);
+ # Select next most recently executed commnad
+ $widget->currentLine(2);
+ 
+ # If the use typed anything before navigating
+ # through history, this restores that text:
+ $widget->currentLine(0);
+
+=head2 Tab Completion
+
+L<Tab completion|/TabComplete> is activated by pressing the "Tab" key. Tab
+completion does nothing by default. If you wish to add a tab completion
+callback, you should register your callback functions with the widget. See
+the event documentation for more details.
+
+=head2 Output Handling
+
+Compared to other Prima widgets, this one is a bit unusual in that it uses
+dependency injection for the output handling. This approach provides useful
+defaults, an easy way to turn things off, and a general mechanism to provide
+sophisticated handling if so desired. To change the output handling, you set
+the L<outputHandler|/outputHandler> property to an object that
+has methods C<command_printout> and C<newline_printout>. Alternatively, you
+can specify one of the two output handler constants, either C<ih::StdOut> or
+C<ih::Null>, and the appropriate handler object will be built for
+you. The C<command_printout> method is called with the original text when
 the user first presses "Enter", and is meant to allow the output system to
 signify the command in a special way. All results are printed using
 C<newline_printout>, which are supposed to show the output on a new line.
 
 =head1 API
+
+As with all other Prima widgets, you can control the behavior of the widget
+both by modifying various properties and by providing custom callbacks. You
+can also interact with the widget programmatically by getting and setting
+properties as well as issuing events.
 
 =head2 Properties
 
@@ -570,8 +646,8 @@ C<newline_printout>, which are supposed to show the output on a new line.
 
 =item currentLine
 
-The current line from the history being displayed, or 0 if the user is
-entering text on a new line. You can use this as an accessor to determine if
+The current line from the history being displayed or edited, or 0 if the
+user is entering text on a new line. You can use this as an accessor to determine if
 the user is currently examining a line from their history, and you can set
 this value to programmatically move the user to a specific point in their
 history. You cannot set this at object construction time.
@@ -625,14 +701,20 @@ set at object construction time and defaults to C<ih::All>.
 
 Note: it seems to me that this should also be open to taking a subref,
 which would perform whatever custom filter/sort is desired. Presently, this
-setting effects storage, so it is called just after the user presses enter.
-If this behavior sounds interesting to you, let me know and I will add it.
+setting effects B<how a command is inserted into storage> and it is called
+just after the user presses enter. In other words, this is not a replacement
+for autocompletion.
 
 =back
 
 =head2 Methods
 
 =over
+
+=item evaluate
+
+Accepts a string and runs the L<Evaluate|/Evaluate> event with the given
+string rather than the (PressEnter munged) contents of the C<InputHistory>.
 
 =item move_line
 
@@ -641,19 +723,76 @@ Positive numbers move back in time, negative numbers move forward in time.
 (Yeah, it's kinda weird, but it makes the rest of it eaiser. I swear.)
 Calling C<move_line> with 1 will move back in history by one step.
 
-The meaning of up and down as forward or backward in time depends on the
-application. However, having set C<pastIs> to either C<ih::Up> or C<ih::Down>,
+The meaning of up and down as forward or backward in time depends on your
+needs, and how you reflect those needs in your L<pastIs|/pastIs> property.
+However, having set L<pastIs|/pastIs> to either C<ih::Up> or C<ih::Down>,
 you can call C<move_line> with the strings 'up', 'down', 'pgup', or 'pgdn'
 and get the correct behavior.
+
+=item press_enter 
+
+Accepts a string and runs the L<PressEnter|/PressEnter> chain of events with
+the given string rather than the contents of the C<InputHistory>.
+
+=item tab_complete
+
+Accepts three strings, one each for the left, selection, and right, and runs
+the L<TabComplete|/TabComplete> event with the given strings.
 
 =back
 
 =head2 Events
 
-The events are listed in the order they are executed when the user presses
-Enter:
+The events are listed in reverse alphabetical order, which is also roughly
+the order in which the user will experience them:
 
 =over
+
+=item TabComplete
+
+This notification is called when the user presses the Tab key or when you
+manually issue a C<TabComplete> notification. This calls any and all
+callbacks that have been registered under this event. Such callbacks are
+passed the C<InputHistory> object as well as three pieces of text: the text
+to the left of the current selection, the current selection, and the text to
+the right of the current selection. If there is no selection, the second
+argument is an empty string.
+
+If you decide to write a callback for tab completion, you should probably
+adjust your behavior based on whether or not something is selected. Also,
+if you decide to update the text, you should do so by modifying the widget's
+text property, and you should probably clear the event:
+
+ # Add a naive file completion
+ $widget->add_notification(TabComplete => sub {
+     my ($self, $left, $selection, $right) = @_;
+     
+     # Are there any files that match the description?
+     # If not, let the remaining notifications have their say.
+     my @files = glob("$selection*");
+     return unless @files;
+     
+     # We found something, so clear the event
+     $self->clear_event;
+     
+     if (@files == 1) {
+         # If there's only one item, complete it
+         $self->text($left . $files[0] . $right);
+         # Put the cursor at the end of the filename
+         $self->charOffset(length($left . $files[0]));
+     }
+     else {
+     	 # Otherwise print the options
+     	 $self->outputHandler->newline_printout(
+     	     join(' | ', @files));
+     }
+ });
+
+Of course, this isn't quite as friendly as a tab completion that figures out
+what the user is trying to complete based on the cursor's location instead
+of the cursor's selection. It also doesn't do nice things like fill in text
+that all of the elements share, such as converting 'Bui' to 'Build' if both
+'Build' and 'Build.PL' are in the current directory. But it's a start.
 
 =item PressEnter
 
@@ -709,5 +848,35 @@ L<nt::Request notification|Prima::Object/Execution control>, so C<PostEval>
 events are issued in the order in which they are registered.
 
 =back
+
+=head1 BUGS AND LIMITATIONS
+
+Are there bugs in this module? Probably. If you find one please let me know!
+You can report bugs to L<https://github.com/run4flat/App-Prima-REPL/issues>.
+
+=head1 SEE ALSO
+
+This module is distributed as part of L<App::Prima::REPL>, a graphical
+run-eval-print-loop written using the L<Prima> GUI toolkit. It is built atop
+L<Prima::InputLine>, so you may want to check that out if you are looking
+for a way to get this sort of input from the user, but don't need any sort
+of history tracking or navigation.
+
+=head1 AUTHOR
+
+This module was written by David Mertens (dcmertens.perl@gmail.com).
+
+=head1 LICENSE AND COPYRIGHT
+
+Portions of this module's code are copyright (c) 2011 The Board of Trustees
+at the University of Illinois.
+
+Portions of this module's code are copyright (c) 2011-2013 Northwestern
+University.
+
+This module's documentation is copyright (c) 2011-2013 David Mertens.
+
+This module is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.
 
 =cut
