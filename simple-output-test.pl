@@ -10,7 +10,6 @@
  );
  
  my $capture = $window->insert(CaptureStdOut =>
-     text => '',
      pack => {fill => 'both'},
  );
  
