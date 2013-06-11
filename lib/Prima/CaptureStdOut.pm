@@ -165,13 +165,12 @@ sub restore_STDIO {
 sub start_capturing {
 	my $self = shift;
 	
-	restore_STDIO if @captures;
 	push @captures, $self;
 	
-	$self->arrange_my_capturing;
+	$self->setup_capturing;
 }
 
-sub arrange_my_capturing {
+sub setup_capturing {
 	my $self = shift;
 	# Set the file handles
 	select($self->{stdout});
@@ -181,7 +180,7 @@ sub arrange_my_capturing {
 sub stop_capturing {
 	my $self = shift;
 	
-	# Under all circumstances, we will go back to the originals
+	# To keep things simple, always go back to the originals.
 	restore_STDIO;
 	
 	# Croak if we're trying to stop when self is not at the top of the
@@ -190,10 +189,11 @@ sub stop_capturing {
 		croak("Out-of-order! Expected capture of $self but instead got capture of $captures[-1]")
 	}
 	
-	# Pop self off the captures stack
+	# Pop self off the captures stack and setup the previous capture. If
+	# there is none remaining, we already have STDIO back in place, so
+	# we're done.
 	pop @captures;
-	
-	$captures[-1]->arrange_my_capturing if @captures;
+	$captures[-1]->setup_capturing if @captures;
 }
 
 sub append_output {

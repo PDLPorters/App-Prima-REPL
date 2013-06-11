@@ -41,7 +41,6 @@ eval {
 } or do {
     Prima::CaptureStdOut::restore_STDIO();
     pass('Out-of-order capture lifo correctly triggered failure');
-    diag($@);
 };
 
 done_testing;
