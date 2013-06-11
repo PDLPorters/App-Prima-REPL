@@ -25,6 +25,7 @@
  print STDERR "This will probably be captured in an error window\n";
  warn "This is a captured warning\n";
  warn "This is also a captured warning\n";
+ $capture->command_printout('This is a command!');
  
  $capture->stop_capturing;
  

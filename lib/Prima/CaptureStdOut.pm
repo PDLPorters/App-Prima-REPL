@@ -137,8 +137,9 @@ sub printout {
 
 sub command_printout {
 	my $self = shift;
-	$self->ensure_output_edit('command', 0, backColor => cl::White,
-		style => fs::Bold);
+	$self->ensure_output_edit('command', 0, backColor => cl::White);
+	# Make sure the font is bold
+	$self->{curr_out_widget}->font->style(fs::Bold);
 	$self->append_output(@_);
 }
 
@@ -152,13 +153,11 @@ sub logfile {
 	'temp-output.txt';
 }
 
-our ($curr_stderr, $curr_stdout);
 sub start_capturing {
 	my $self = shift;
 	
 	# STDOUT is easy. Just select the tied fileahandle.
 	push @{$self->{old_stdout}}, select($self->{stdout});
-	$curr_stdout = $self->{stdout};
 	
 	# STDERR is trickier. We have to dup whatever is presently in
 	# STDERR and save that as a backup.
@@ -167,11 +166,9 @@ sub start_capturing {
 	push @{$self->{old_stderr}}, $prev_stderr;
 	# Then we can simply overwrite STDERR with our tied file handle.
 	*main::STDERR = $self->{stderr};
-	# Note the currently open file handles
-	$curr_stderr = $self->{stderr};
 }
 
-# Keep this backed up
+# Keep this backed up for error reporting
 open my $original_STDERR, '>&main::STDERR';
 my $original_STDOUT = select;
 
@@ -211,21 +208,18 @@ sub append_output {
 	# Remove useless parts of error messages (which refer to lines in this code)
 	s/ \(eval \d+\)// for @lines;
 	
-#	# Print errors to the terminal
-#	print $original_STDERR @lines if $out_widget->{is_to_stderr};
-	
 	# Open the logfile, which I'll print to simultaneously:
 	open my $logfile, '>>', $self->logfile;
 	# Go through each line and carriage return, overwriting where appropriate:
-	foreach(@lines) {
+	for my $line (@lines) {
 		# If it's a carriage return, set the current column to zero:
-		if (/\r/) {
+		if ($line eq "\r") {
 			$out_widget->{output_column} = 0;
 			print $logfile "\\r\n";
 		}
 		# If it's a newline, increment the output line and set the column to
 		# zero:
-		elsif (/\n/) {
+		elsif ($line eq "\n") {
 			$out_widget->{output_column} = 0;
 			$out_widget->{output_line_number}
 				= $out_widget->{output_line_number} + 1;
@@ -234,26 +228,26 @@ sub append_output {
 		# Otherwise, add the text to the current line, starting at the current
 		# column:
 		else {
-			print $logfile $_;
+			print $logfile $line;
 			my $current_text = $out_widget->get_line($out_widget->{output_line_number});
 			# If the current line is blank, set the text to $_:
 			if (not $current_text) {
-				$current_text = $_;
+				$current_text = $line;
 			}
 			# Or, if the replacement text exceeds the current line's content,
-			elsif (length($current_text) < length($_) + $out_widget->{output_column}) {
+			elsif (length($current_text) < length($line) + $out_widget->{output_column}) {
 				# Set the current line to contain everything up to the current
 				# column, and append the next text:
-				$current_text = substr($current_text, 0, $out_widget->{output_column}) . $_;
+				$current_text = substr($current_text, 0, $out_widget->{output_column}) . $line;
 			}
 			# Or, replace the current line's text with the next text:
 			else {
-				substr($current_text, $out_widget->{output_column}, length($_), $_);
+				substr($current_text, $out_widget->{output_column}, length($line), $line);
 			}
 			$out_widget->delete_line($out_widget->{output_line_number});
 			$out_widget->insert_line($out_widget->{output_line_number}, $current_text);
 			# increase the current column:
-			$out_widget->{output_column} = $out_widget->{output_column} + length($_);
+			$out_widget->{output_column} = $out_widget->{output_column} + length($line);
 		}
 	}
 	
@@ -275,7 +269,7 @@ sub append_output {
 	# continue scrolling, if it was not, I would not scroll. But, I cannot find
 	# how to do that at the moment, so it'll just force scroll with every
 	# printout. working here:
-	$out_widget->cursor_cend;
+#	$out_widget->cursor_cend;
 }
 
 1;
