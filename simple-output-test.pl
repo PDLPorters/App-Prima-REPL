@@ -18,6 +18,7 @@
  
  $capture->note_printout("This is a note");
  $capture->printerr('This will always be correctly caught');
+ print "long line " x 30, "\n";
  print "This is captured text!\n";
  print "This is also captured text!\n";
  print "fileno for currently selected file handle is ", fileno(select), "\n";
