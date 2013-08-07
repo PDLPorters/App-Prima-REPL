@@ -620,10 +620,10 @@ the event documentation for more details.
 =head2 Output Handling
 
 Compared to other Prima widgets, this one is a bit unusual in that it uses
-dependency injection for the output handling. This approach provides useful
-defaults, an easy way to turn things off, and a general mechanism to provide
-sophisticated handling if so desired. To change the output handling, you set
-the L<outputHandler|/outputHandler> property to an object that
+the Visitor Design Pattern for the output handling. This approach provides
+useful defaults, an easy way to turn things off, and a general mechanism to
+provide sophisticated handling if so desired. To change the output handling,
+you set the L<outputHandler|/outputHandler> property to an object that
 has methods C<command_printout> and C<newline_printout>. Alternatively, you
 can specify one of the two output handler constants, either C<ih::StdOut> or
 C<ih::Null>, and the appropriate handler object will be built for
