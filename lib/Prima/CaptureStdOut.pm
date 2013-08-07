@@ -242,17 +242,6 @@ sub append_output {
 		}
 	}
 	
-#	# Make sure the output widget is tall enough to accomodate the new
-#	# text XXX This almost certainly won't work!!!
-#	print $logfile "out_widget's height is ", $out_widget->height, "\n";
-#	$out_widget->height($out_widget->{output_line_number} * $out_widget->font->height);
-#	print $logfile "after mod, out_widget's height is ", $out_widget->height, "\n";
-#	# make_logical, I think
-	print $logfile "Logical for current cursor location: ";
-	print $logfile "($out_widget->{output_column}, $out_widget->{output_line_number}) => ";
-	my ($new_x, $new_y) = $out_widget->make_logical($out_widget->{output_column}, $out_widget->{output_line_number});
-	print $logfile "($new_x, $new_y)\n";
-	
 	# close the logfile:
 	close $logfile;
 	
