@@ -65,22 +65,12 @@ use Carp 'croak';
 
 # profile_default? Eventually I'll want to provide coloring options and
 # logging file names and options.
-use Symbol;
 sub init {
 	my $self = shift;
 	my %profile = $self->SUPER::init(@_);
 	
 	# Maybe some day get various settings from the profile. For now, I
 	# just ignore.
-	
-	my $sym = gensym;
-	tie *{$sym}, 'Prima::CaptureStdOut::TieStdOut' => $self;
-	$self->{stdout} = $sym;
-	$sym = gensym;
-	tie *{$sym}, 'Prima::CaptureStdOut::TieStdErr' => $self;
-	$self->{stderr} = $sym;
-	$self->{old_stderr} = [];
-	$self->{old_stdout} = [];
 	
 	return %profile;
 }
@@ -93,8 +83,9 @@ sub ensure_output_edit {
 		my $new_output = $self->insert(Edit =>
 			pack => {
 				fill => 'x', expand => 1, side => 'top',
-				padx => 10, pady => 10
+				padx => 10, pady => 5
 			},
+#			height => 50,
 			text => '',
 			cursorWrap => 1,
 			wordWrap => 1,
@@ -152,14 +143,12 @@ sub logfile {
 	'temp-output.txt';
 }
 
-# Keep this backed up for basic logistics
-open my $original_STDERR, '>&main::STDERR';
-my $original_STDOUT = select;
+# Keep track of the capture stack so we can warn on weird behavior.
 my @captures;
 
 sub restore_STDIO {
-	*main::STDERR = $original_STDERR;
-	select(*$original_STDOUT);
+	untie *STDERR;
+	untie *STDOUT;
 }
 
 sub start_capturing {
@@ -173,8 +162,8 @@ sub start_capturing {
 sub setup_capturing {
 	my $self = shift;
 	# Set the file handles
-	select($self->{stdout});
-	*main::STDERR = $self->{stderr};
+	tie *STDOUT, 'Prima::CaptureStdOut::TieStdOut' => $self;
+	tie *STDERR, 'Prima::CaptureStdOut::TieStdErr' => $self;
 }
 
 sub stop_capturing {
@@ -244,6 +233,8 @@ sub append_output {
 			else {
 				substr($current_text, $out_widget->{output_column}, length($line), $line);
 			}
+#			This doesn't work. :-(
+#			$out_widget->set_line($out_widget->{output_line_number}, $current_text);
 			$out_widget->delete_line($out_widget->{output_line_number});
 			$out_widget->insert_line($out_widget->{output_line_number}, $current_text);
 			# increase the current column:
@@ -253,9 +244,14 @@ sub append_output {
 	
 #	# Make sure the output widget is tall enough to accomodate the new
 #	# text XXX This almost certainly won't work!!!
+#	print $logfile "out_widget's height is ", $out_widget->height, "\n";
 #	$out_widget->height($out_widget->{output_line_number} * $out_widget->font->height);
+#	print $logfile "after mod, out_widget's height is ", $out_widget->height, "\n";
 #	# make_logical, I think
-	
+	print $logfile "Logical for current cursor location: ";
+	print $logfile "($out_widget->{output_column}, $out_widget->{output_line_number}) => ";
+	my ($new_x, $new_y) = $out_widget->make_logical($out_widget->{output_column}, $out_widget->{output_line_number});
+	print $logfile "($new_x, $new_y)\n";
 	
 	# close the logfile:
 	close $logfile;
