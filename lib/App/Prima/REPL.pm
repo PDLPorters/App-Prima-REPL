@@ -77,7 +77,7 @@ has 'logfile' => (
 
 sub _build_history_output_hander {
   my $self = shift;
-  return PrimaX::InputHistory::Output::REPL->new( $self );
+  return Prima::InputHistory::Output::REPL->new( $self );
 }
 
 has 'text_file_extension_list' => (
@@ -205,7 +205,7 @@ sub _build_inline {
 	my $fileName = $self->history_filename;
 	my $historyLength = $self->max_history_items;
 
-	my $inline = PrimaX::InputHistory->create(
+	my $inline = Prima::InputHistory->create(
 		owner => $self->window,
 		text => '',
 		pack => {fill => 'both', after => $notebook, padx => $padding, pady => $padding},
@@ -246,6 +246,7 @@ sub _build_inline {
 		onKeyUp => sub {
 			main::my_keyup(@_);
 		},
+		pastIs => ih::Up,
 	);
 
 	# Add the special accelerators seperately:
