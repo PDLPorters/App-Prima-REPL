@@ -4,6 +4,7 @@ use warnings;
 package App::Prima::REPL::Commands;
 
 use Moo;
+use Data::Dumper::GUI;
 
 has 'repl' => (
   is => 'ro',
@@ -31,6 +32,9 @@ sub alias_functions {
 
   # Convenience function for PDL folks.
   *{ $namespace . '::p' } = sub { print @_ };
+
+
+  *{ $namespace . '::x' } = sub { Dumper @_ };
 
   # Provide access to the REPL object
   # i.e. commands that were previously REPL:: now should be REPL->
