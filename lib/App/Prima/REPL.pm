@@ -135,7 +135,7 @@ sub _build_window {
     size => [600, 600],
 	menuItems => [
 		[ '~File' => [
-#			[ '~Open', 'Ctrl-O', '@O', sub { $self->open_file(@_) }],
+			[ '~Open', 'Ctrl-O', '@O', sub { main::open_file() }],
 			[],
 			[ '~Exit', '', '', sub { $self->call_exit(@_) }],
 			],
