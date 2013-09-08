@@ -168,6 +168,28 @@ sub _build_output {
     readOnly => 1,
     backColor => cl::LightGray,
     font => { name => 'monospace'},
+    onPopup => sub {
+		my ( $me, $btn, $x, $y) = @_;
+		# TODO unclear why do we need to call client_to_screen twice, but this is how it works on Linux
+		# and puts the pop-up under the cursor.
+		($x, $y) = $me->client_to_screen($x, $y);
+		($x, $y) = $me->client_to_screen($x, $y);
+		($x, $y) = $self->window->screen_to_client($x, $y);
+		my $text = $me->get_selected_text;
+		my @items = (
+				['help' => "Help" => sub { $self->get_help() } ],
+		);
+		if ($text and $text =~ /\S/) {
+			push @items, [];
+			push @items, ['help' => "Help for $text" => sub { $self->get_help($text) } ];
+		}
+		my $pop = $me->insert( Popup =>
+			autoPopup  => 0,
+			items      => \@items,
+		);
+		$pop->popup( $x, $y);
+		$me->clear_event;
+	},
   );
 
   # Over-ride the defaults for these:
