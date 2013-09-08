@@ -132,7 +132,21 @@ sub _build_window {
   return Prima::MainWindow->new(
     #pack => { fill => 'both', expand => 1, padx => $self->padding, pady => $self->padding },
     text => 'Prima REPL',
-    size => [600, 600], 
+    size => [600, 600],
+	menuItems => [
+		[ '~File' => [
+#			[ '~Open', 'Ctrl-O', '@O', sub { $self->open_file(@_) }],
+			[],
+			[ '~Exit', '', '', sub { $self->call_exit(@_) }],
+			],
+		],
+		[],
+		[ '~Help' => [
+			[ '~Help', 'Ctrl-h', '@H', sub { $self->get_help() }],
+			[ '~About', \&show_about ],
+			],
+		],
+	],
   );
 }
 
@@ -323,6 +337,12 @@ sub get_help {
 	# window is defined, as this can cause trouble on Windows).
 	$::application->get_active_window->bring_to_front
 		if $::application->get_active_window;
+}
+
+sub show_about {
+	my $self = shift;
+	Prima::MsgBox::message_box( 'About App::Prima::REPL',
+		"App::Prima::REPL v$VERSION\nCreated by David Mertens", mb::Ok);
 }
 
 # Add some accelerator keys to the window for easier navigaton:
@@ -593,17 +613,22 @@ sub setup_inline_events {
 	# logfile handling for the exit command:
 	$inline->add_notification(PressEnter => sub {
 		if ($_[1] =~ /^\s*exit\s*$/) {
-			unlink $self->logfile;
-			exit;
+			$self->call_exit;
 		}
 	});
-	
+
 	# NiceSlice handling
 	if ($self->has_PDL) {
 		$inline->add_notification(PressEnter => sub {
 			$_[1] = PDL::NiceSlice->perldlpp($_[1]);
 		});
 	}
+}
+
+sub call_exit {
+	my $self = shift;
+	unlink $self->logfile;
+	exit;
 }
 
 ###############################################################################
