@@ -525,6 +525,23 @@ the output for PDL can get exceedingly long. Rather than always print
 potentially long results to the output, the Prima REPL is quiet by default and
 makes it easy to print your results if you want.
 
+=head2 Special command
+
+=over 4
+
+=item *
+
+p for printing a scalar value
+
+=item *
+
+x for prining a complex data structure using L<Data::Dumper::GUI>
+
+ @names = qw(Foo Bar)
+ x \@names
+
+=back
+
 =head2 Finding Documentation
 
 Prima REPL uses Prima's built-in pod viewer (which you may be using to view this
