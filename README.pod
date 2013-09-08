@@ -54,14 +54,27 @@ L<https://github.com/run4flat/App-Prima-REPL/issues>.
 
 =head1 Installation
 
-Currently, this software is only distributed on Github. I intend to release
-it to CPAN at the same time that I release PDL::Drawing::Prima and
-PDL::Graphics::Prima. Strictly speaking, this application does not depend on
-either of those packages, but they provide very nice plotting capabilities
-for PDL, so if you use PDL I highly recommend installing them.
+The module is distributed via CPAN.
 
-At any rate, you cannot install this software with a simple C<cpan> or
-C<cpanm>. Instead, do the following:
+You can install it with a simple C<cpan> or C<cpanm> command.
+
+If you already have cpan configured (e.g. on Strawberry Perl)
+
+  cpan App::Prima::REPL
+
+On Linux/OSX you can use cpanminus.
+
+  curl -L http://cpanmin.us | perl - App::cpanminus
+  cpanm App::Prima::REPL
+
+PDL::Drawing::Prima and PDL::Graphics::Prima are additional modules
+available on CPAN, that provide very nice plotting capabilities for PDL,
+so if you use PDL I highly recommend installing those too.
+
+=head2 Manual installation
+
+In case the above does not work you might want to fall back to
+manual installation of the modules:
 
 =over
 
@@ -132,7 +145,7 @@ One more piece, the actual REPL:
 
 =head1 Copyright and License
 
-Copyright (C) 2011, 2012 David Mertens
+Copyright (C) 2011, 2012, 2013 David Mertens
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
