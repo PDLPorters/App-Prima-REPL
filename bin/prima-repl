@@ -61,8 +61,6 @@ BEGIN {
 	};
 }
 
-my $version = 0.3;
-
 #########################
 # Main Application Code #
 #########################
@@ -113,7 +111,7 @@ tie *ERROUT, 'App::Prima::REPL::IO::OutWindow::Err' => $repl;
 eval 'require PDL::Version' if not defined $PDL::Version::VERSION;
 
 # Print the opening message:
-print "Welcome to the Prima REPL, version $version.\n";
+print "Welcome to the Prima REPL, version $App::Prima::REPL::VERSION.\n";
 print "Using PDL version $PDL::Version::VERSION\n" if ($loaded_PDL);
 print "Using PDL::Graphics::Prima\n" if ($loaded_Prima_Graphics);
 print "\n";
