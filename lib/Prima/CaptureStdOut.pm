@@ -60,6 +60,11 @@ sub PRINT { shift->{handler}->printerr(@_) }
 use base 'Prima::TextView';
 use Carp 'croak';
 
+#                      red         green     blue
+my $light_yellow = (255 << 16) | (250 << 8) | 230;
+my $light_red    = (255 << 16) | (204 << 8) | 204;
+my $light_grey   = (240 << 16) | (240 << 8) | 240;
+
 # This is actually a widget that gets packed somewhere
 
 # profile_default? Eventually I'll want to provide coloring options and
@@ -74,18 +79,18 @@ sub init {
 	$self->{blocks} = [];
 	$self->{needs_new_block} = 1;
 	$self->{max_block_width} = 0;
+	$self->backColor($light_grey);
 	
 	return %profile;
 }
 
 # Each line is rendered by a seperate block, so make it easy to build new
 # blocks.
-use Prima::MsgBox;
 sub append_new_output_block {
 	my ($self, $type) = @_;
 	
 	# Get the y-offset of the previous block (if it exists)
-	my $y_off = 5;
+	my $y_off = 15;
 	if (exists $self->{curr_block}) {
 		my $prev_block = $self->{curr_block};
 		$y_off = $prev_block->[tb::BLK_Y] + $prev_block->[tb::BLK_HEIGHT];
@@ -94,7 +99,7 @@ sub append_new_output_block {
 	# Build a new block and assign it to the current block
 	my $block = $self->{curr_block} = tb::block_create;
 	# Set the x and y offsets
-	$block->[tb::BLK_X] = 5;
+	$block->[tb::BLK_X] = 15;
 	$block->[tb::BLK_Y] = $y_off;
 	# Set up the proper block and font height
 	my $font_height_px = $self->font->height;
@@ -128,10 +133,6 @@ sub ensure_output_type {
 	$self->append_new_output_block($type);
 }
 
-#                      red         green     blue
-my $light_yellow = (255 << 16) | (250 << 8) | 230;
-my $light_red    = (255 << 16) | (204 << 8) | 204;
-my $light_grey   = (240 << 16) | (240 << 8) | 240;
 sub note_printout {
 	my $self = shift;
 	$self->ensure_output_type('note');
@@ -331,6 +332,7 @@ sub pre_text_blocks {
 	
 	$y -= $block->[tb::BLK_APERTURE_Y] + 1;
 	my $top = $y + $block->[tb::BLK_HEIGHT];
+	my $right_edge = $block->[@{$block} - 1] + $x;
 	
 	if ($type eq 'note') {
 		$canvas->color($light_yellow);
@@ -345,7 +347,8 @@ sub pre_text_blocks {
 		$canvas->color(cl::White);
 	}
 	
-	$canvas->bar(0, $y, $canvas->width, $top);
+	$canvas->bar(0, $y, $x, $top);
+	$canvas->bar($right_edge, $y, $canvas->width, $top);
 	$canvas->color($backup_color);
 }
 
