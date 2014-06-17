@@ -57,8 +57,7 @@ sub PRINT { shift->{handler}->printerr(@_) }
                       package Prima::CaptureStdOut;
 ##########################################################################
 
-use base 'Prima::Widget';
-use Prima::Edit;
+use base 'Prima::TextView';
 use Carp 'croak';
 
 # This is actually a widget that gets packed somewhere
@@ -69,36 +68,64 @@ sub init {
 	my $self = shift;
 	my %profile = $self->SUPER::init(@_);
 	
-	# Maybe some day get various settings from the profile. For now, I
-	# just ignore.
+	# Set some basic initializations
+	$self->{output_type} = '';
+	$self->{output_column} = 0;
+	$self->{blocks} = [];
+	$self->{needs_new_block} = 1;
+	$self->{max_block_width} = 0;
 	
 	return %profile;
 }
 
-sub ensure_output_edit {
-	my ($self, $type, $is_to_stderr, @props) = @_;
-	if (not defined $self->{curr_out_widget}
-		or $self->{curr_out_widget}->{output_type} ne $type
-	) {
-		my $new_output = $self->insert(Edit =>
-			pack => {
-				fill => 'x', expand => 1, side => 'top',
-				padx => 10, pady => 5
-			},
-#			height => 50,
-			text => '',
-			cursorWrap => 1,
-			wordWrap => 1,
-			readOnly => 1,
-			font => { name => 'monospace'},
-			@props,
-		);
-		$new_output->{is_to_stderr} = $is_to_stderr;
-		$new_output->{output_type} = $type;
-		$new_output->{output_column} = 0;
-		$new_output->{output_line_number} = 0;
-		$self->{curr_out_widget} = $new_output;
+# Each line is rendered by a seperate block, so make it easy to build new
+# blocks.
+use Prima::MsgBox;
+sub append_new_output_block {
+	my ($self, $type) = @_;
+	
+	# Get the y-offset of the previous block (if it exists)
+	my $y_off = 5;
+	if (exists $self->{curr_block}) {
+		my $prev_block = $self->{curr_block};
+		$y_off = $prev_block->[tb::BLK_Y] + $prev_block->[tb::BLK_HEIGHT];
 	}
+	
+	# Build a new block and assign it to the current block
+	my $block = $self->{curr_block} = tb::block_create;
+	# Set the x and y offsets
+	$block->[tb::BLK_X] = 5;
+	$block->[tb::BLK_Y] = $y_off;
+	# Set up the proper block and font height
+	my $font_height_px = $self->font->height;
+	$block->[tb::BLK_HEIGHT] = $font_height_px;
+	$block->[tb::BLK_FONT_SIZE] = $font_height_px + tb::F_HEIGHT;
+	$block->[tb::BLK_APERTURE_Y] = $self->font->descent;
+	# Note where the block takes ownership of the text string
+	$block->[tb::BLK_TEXT_OFFSET] = length(${$self->textRef});
+	# Set the background color to the usual default
+	$block->[tb::BLK_BACKCOLOR] = cl::Back;
+	
+	# Apply per-type block fixups (colors, font weight, etc)
+	my $method = "fixup_${type}_block";
+	$self->$method;
+	
+	# Keep track of the output column and type
+	$self->{output_column} = 0;
+	$self->{output_type} = $type if defined $type;
+	
+	# Add this to the list of blocks
+	push @{$self->{blocks}}, $block;
+	
+	# Clear the needs-new-block flag
+	$self->{needs_new_block} = 0;
+}
+
+# Switch to a new block if it's a change in style
+sub ensure_output_type {
+	my ($self, $type) = @_;
+	return if $self->{output_type} eq $type;
+	$self->append_new_output_block($type);
 }
 
 #                      red         green     blue
@@ -107,36 +134,51 @@ my $light_red    = (255 << 16) | (204 << 8) | 204;
 my $light_grey   = (240 << 16) | (240 << 8) | 240;
 sub note_printout {
 	my $self = shift;
-	$self->ensure_output_edit('note', 0, backColor => $light_yellow);
+	$self->ensure_output_type('note');
 	$self->append_output(@_);
+}
+sub fixup_note_block {
+	# Notes are in dark gray and italic
+	my $self = shift;
+	$self->{curr_block}[tb::BLK_BACKCOLOR] = $light_yellow;
+	$self->{curr_block}[tb::BLK_FONT_STYLE] = fs::Italic;
 }
 
 sub newline_printout {
 	my $self = shift;
-	$self->ensure_output_edit('normal', 0, backColor => $light_grey);
-	# Make sure we're starting on a new line!
-	unshift @_, "\n" if $self->{curr_out_widget}->{output_column} != 0;
+	$self->append_new_output_block('normal')
+		unless $self->{output_column} == 0 
+			and $self->{output_type} eq 'normal';
 	$self->append_output(@_);
 }
 
 sub printout {
 	my $self = shift;
-	$self->ensure_output_edit('normal', 0, backColor => $light_grey);
+	$self->ensure_output_type('normal');
 	$self->append_output(@_);
+}
+sub fixup_normal_block {
+	shift->{curr_block}[tb::BLK_BACKCOLOR] = $light_grey;
 }
 
 sub command_printout {
 	my $self = shift;
-	$self->ensure_output_edit('command', 0, backColor => cl::White);
-	# Make sure the font is bold
-	$self->{curr_out_widget}->font->style(fs::Bold);
+	$self->ensure_output_type('command');
 	$self->append_output(@_);
+}
+sub fixup_command_block {
+	# Commands are in bold
+	shift->{curr_block}[tb::BLK_FONT_STYLE] = fs::Bold;
 }
 
 sub printerr {
 	my $self = shift;
-	$self->ensure_output_edit('error', 1, backColor => $light_red);
+	$self->ensure_output_type('error');
 	$self->append_output(@_);
+}
+sub fixup_error_block {
+	# Errors are in red
+	shift->{curr_block}[tb::BLK_BACKCOLOR] = $light_red;
 }
 
 sub logfile {
@@ -188,9 +230,6 @@ sub stop_capturing {
 sub append_output {
 	my $self = shift;
 	
-	# Get the widget into which we will add more text
-	my $out_widget = $self->{curr_out_widget};
-	
 	# Join the arguments and split them at the newlines and carriage returns:
 	my @args = map {defined $_ ? $_ : ''} ('', @_);
 	my @lines = split /([\n\r])/, join('', @args);
@@ -201,49 +240,78 @@ sub append_output {
 	open my $logfile, '>>', $self->logfile;
 	# Go through each line and carriage return, overwriting where appropriate:
 	for my $line (@lines) {
+		# Skip blanks
+		next unless $line;
 		# If it's a carriage return, set the current column to zero:
 		if ($line eq "\r") {
-			$out_widget->{output_column} = 0;
+			$self->{output_column} = 0;
 			print $logfile "\\r\n";
 		}
-		# If it's a newline, increment the output line and set the column to
-		# zero:
+		# If it's a newline, build a new block
 		elsif ($line eq "\n") {
-			$out_widget->{output_column} = 0;
-			$out_widget->{output_line_number}
-				= $out_widget->{output_line_number} + 1;
+			$self->{needs_new_block} = 1;
+			$self->{output_column} = 0;
 			print $logfile "\n";
 		}
 		# Otherwise, add the text to the current line, starting at the current
 		# column:
 		else {
 			print $logfile $line;
-			my $current_text = $out_widget->get_line($out_widget->{output_line_number});
-			# If the current line is blank, set the text to $_:
-			if (not $current_text) {
-				$current_text = $line;
+			
+			# Assume that the current block is ours to use, unless told
+			# otherwise.
+			$self->append_new_output_block($self->{output_type})
+				if $self->{needs_new_block};
+			
+			# Insert current line contents where appropriate
+			my $sub_start = $self->{curr_block}[tb::BLK_TEXT_OFFSET]
+				+ $self->{output_column};
+			if ($sub_start == length(${$self->textRef})) {
+				# If we're at the end of the string, then simply append
+				${$self->textRef} .= $line;
 			}
-			# Or, if the replacement text exceeds the current line's content,
-			elsif (length($current_text) < length($line) + $out_widget->{output_column}) {
-				# Set the current line to contain everything up to the current
-				# column, and append the next text:
-				$current_text = substr($current_text, 0, $out_widget->{output_column}) . $line;
-			}
-			# Or, replace the current line's text with the next text:
 			else {
-				substr($current_text, $out_widget->{output_column}, length($line), $line);
+				# Otherwise, replace with what we have
+				substr (${$self->textRef}, $sub_start, length($line)) = $line;
 			}
-#			This doesn't work. :-(
-#			$out_widget->set_line($out_widget->{output_line_number}, $current_text);
-			$out_widget->delete_line($out_widget->{output_line_number});
-			$out_widget->insert_line($out_widget->{output_line_number}, $current_text);
-			# increase the current column:
-			$out_widget->{output_column} = $out_widget->{output_column} + length($line);
+			$self->{output_column} += length($line);
+			
+			# Recalculate the block's width
+			$sub_start = $self->{curr_block}[tb::BLK_TEXT_OFFSET];
+			my $width_px = $self->get_text_width(
+				substr (${$self->textRef}, $sub_start)
+			);
+			# (Re)set the (one and only) text rendering command
+			my $length_in_row = length(${$self->textRef}) - $sub_start;
+			{
+				no warnings 'misc';
+				splice @{$self->{curr_block}}, tb::BLK_START;
+			}
+			push @{$self->{curr_block}},
+				tb::code(\&pre_text_blocks, $self->{output_type}),
+				tb::text(0, $length_in_row, $width_px);
+			
+			# Update the maximum known width
+			$self->{max_block_width} = $width_px
+				if $self->{max_block_width} < $width_px;
 		}
 	}
 	
 	# close the logfile:
 	close $logfile;
+	
+	# Update all blocks to report the same (maximum) width. This way, if
+	# the user scrolls to the right and scrolls some text out of screen, its
+	# coloration will still be correct
+	for my $bl (@{$self->{blocks}}) {
+		$bl->[tb::BLK_WIDTH] = $self->{max_block_width};
+	}
+	
+	# Update the canvas
+	$self->recalc_ymap;
+	my $block = $self->{curr_block};
+	my $y_off = $block->[tb::BLK_Y] + $block->[tb::BLK_HEIGHT];
+	$self->paneSize($self->{max_block_width}, $y_off);
 	
 	# Let the application update itself:
 	$::application->yield;
@@ -255,6 +323,30 @@ sub append_output {
 	# how to do that at the moment, so it'll just force scroll with every
 	# printout. working here:
 #	$out_widget->cursor_cend;
+}
+
+sub pre_text_blocks {
+	my ($self, $canvas, $block, $state, $x, $y, $type) = @_;
+	my $backup_color = $canvas->color;
+	
+	$y -= $block->[tb::BLK_APERTURE_Y] + 1;
+	my $top = $y + $block->[tb::BLK_HEIGHT];
+	
+	if ($type eq 'note') {
+		$canvas->color($light_yellow);
+	}
+	elsif ($type eq 'error') {
+		$canvas->color($light_red);
+	}
+	elsif ($type eq 'normal') {
+		$canvas->color($light_grey);
+	}
+	elsif ($type eq 'command') {
+		$canvas->color(cl::White);
+	}
+	
+	$canvas->bar(0, $y, $canvas->width, $top);
+	$canvas->color($backup_color);
 }
 
 1;

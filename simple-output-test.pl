@@ -10,8 +10,9 @@
  );
  
  my $capture = $window->insert(CaptureStdOut =>
-     pack => {fill => 'both'},
+     pack     => { expand => 1, fill => 'both' },
  );
+ $capture->set(font => { name => 'monospace' });
  
  # Activate the capture
  $capture->start_capturing;

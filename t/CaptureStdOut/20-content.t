@@ -8,11 +8,7 @@ use Prima qw(Application CaptureStdOut);
 
 sub find {
     my ($capture, $regex) = @_;
-    my $N_good = 0;
-    for my $widget ($capture->widgets) {
-        # Impose list context to get the number of matches:
-        $N_good += ()= $widget->text =~ /$regex/g;
-    }
+    my $N_good = ()= $capture->text =~ /$regex/g;
     return $N_good;
 }
 
