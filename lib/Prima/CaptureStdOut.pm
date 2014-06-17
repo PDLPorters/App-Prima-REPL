@@ -165,7 +165,7 @@ sub fixup_normal_block {
 sub command_printout {
 	my $self = shift;
 	$self->ensure_output_type('command');
-	$self->append_output(@_);
+	$self->append_output(@_, "\n");
 }
 sub fixup_command_block {
 	# Commands are in bold
@@ -250,6 +250,11 @@ sub append_output {
 		}
 		# If it's a newline, build a new block
 		elsif ($line eq "\n") {
+			# Previous statement was a newline...
+			if ($self->{needs_new_block}) {
+				$self->append_new_output_block($self->{output_type});
+				$self->{curr_block}[tb::BLK_WIDTH] = 1;
+			}
 			$self->{needs_new_block} = 1;
 			$self->{output_column} = 0;
 			print $logfile "\n";
