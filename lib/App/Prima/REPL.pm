@@ -64,21 +64,10 @@ has 'debug_output' => (
   default => sub{0},
 );
 
-has 'history_output_handler' => (
-  is => 'ro',
-  builder => '_build_history_output_hander',
-  lazy => 1,
-);
-
 has 'logfile' => (
   is => 'ro',
   default => sub { 'prima-repl.logfile' },
 );
-
-sub _build_history_output_hander {
-  my $self = shift;
-  return Prima::InputHistory::Output::REPL->new( $self );
-}
 
 has 'text_file_extension_list' => (
   is      => 'rw',
@@ -155,27 +144,20 @@ sub _build_notebook {
 has 'output' => (
   is => 'ro',
   builder => '_build_output',
-  lazy => 1,
 );
 
+use Prima::CaptureStdOut;
 sub _build_output {
   my $self = shift;
-  my $output = $self->notebook->insert_to_page(0, Edit =>
-    pack => { fill => 'both', expand => 1, padx => $self->padding, pady => $self->padding },
-    text => '',
-    cursorWrap => 1,
-    wordWrap => 1,
-    readOnly => 1,
-    backColor => cl::LightGray,
-    font => { name => 'monospace'},
-  );
-
-  # Over-ride the defaults for these:
-  my $overrides = [
+  my $output = $self->notebook->insert_to_page(0, CaptureStdOut =>
+    pack => { fill => 'both', expand => 1 },
+    accelItems => [
       ['', '', km::Ctrl | kb::PageUp,	sub { $self->goto_prev_page }	],	# previous
       ['', '', km::Ctrl | kb::PageDown,	sub { $self->goto_next_page }	],	# next
-  ];
-  $output->accelTable->insert( $overrides, '', 0 );
+    ],
+  );
+  $output->font->name('monospace');
+  $output->start_capturing;
 
   return $output;
 }
@@ -210,7 +192,7 @@ sub _build_inline {
 		text => '',
 		pack => {fill => 'both', after => $notebook, padx => $padding, pady => $padding},
 		storeType => ih::NoRepeat,
-		outputWidget => $self->history_output_handler,
+		outputHandler => $self->output,
 		onCreate => sub {
 			my $self = shift;
 			
@@ -684,83 +666,6 @@ sub setup_graphics {
 	
 	*main::plot = \&PDL::Graphics::Prima::Simple::plot;
 
-}
-
-# Here is a utility function to print to the output window. Both standard output
-# and standard error are later tied to printing to this interface, so you can
-# just use 'print' or 'say' in all your code and it'll go to this.
-
-sub outwindow {
-	my $self = shift;
-	my $output = $self->output;
-
-	# The first argument is a boolean indicating whether the output should go
-	# to stderr or stdout. I would like to make this print error text in red
-	# eventually, but I need to figure out how to change the color of specific
-	# text items: working here
-	my $to_stderr = shift;
-	
-	# Join the arguments and split them at the newlines and carriage returns:
-	my @args = map {defined $_ ? $_ : ''} ('', @_);
-	my @lines = split /([\n\r])/, join('', @args);
-	# Remove useless parts of error messages (which refer to lines in this code)
-	s/ \(eval \d+\)// for @lines;
-	# Open the logfile, which I'll print to simultaneously:
-	open my $logfile, '>>', $self->logfile;
-	print_to_terminal(@lines) if $self->debug_output or $to_stderr;
-	# Go through each line and carriage return, overwriting where appropriate:
-	foreach(@lines) {
-		# If it's a carriage return, set the current column to zero:
-		if (/\r/) {
-			$self->output_column(0);
-			print $logfile "\\r\n";
-		}
-		# If it's a newline, increment the output line and set the column to
-		# zero:
-		elsif (/\n/) {
-			$self->output_column(0);
-			$self->output_line_number($self->output_line_number + 1);
-			print $logfile "\n";
-		}
-		# Otherwise, add the text to the current line, starting at the current
-		# column:
-		else {
-			print $logfile $_;
-			my $current_text = $output->get_line($self->output_line_number);
-			# If the current line is blank, set the text to $_:
-			if (not $current_text) {
-				$current_text = $_;
-			}
-			# Or, if the replacement text exceeds the current line's content,
-			elsif (length($current_text) < length($_) + $self->output_column) {
-				# Set the current line to contain everything up to the current
-				# column, and append the next text:
-				$current_text = substr($current_text, 0, $self->output_column) . $_;
-			}
-			# Or, replace the current line's text with the next text:
-			else {
-				substr($current_text, $self->output_column, length($_), $_);
-			}
-			$output->delete_line($self->output_line_number);
-			$output->insert_line($self->output_line_number, $current_text);
-			# increase the current column:
-			$self->output_column($self->output_column + length($_));
-		}
-	}
-	
-	# close the logfile:
-	close $logfile;
-	
-	# Let the application update itself:
-	$::application->yield;
-
-	# I'm not super-enthused with manually putting the cursor at the end of
-	# the text, or with forcing the scrolling. I'd like to have some way to
-	# determine if the text was already at the bottom, in which case I would
-	# continue scrolling, if it was not, I would not scroll. But, I cannot find
-	# how to do that at the moment, so it'll just force scroll with every
-	# printout. working here:
-	$output->cursor_cend;
 }
 
 # Useful function to simulate user input. This is useful for initialization

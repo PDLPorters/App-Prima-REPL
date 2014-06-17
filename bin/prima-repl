@@ -53,12 +53,6 @@ BEGIN {
 		$loaded_Prima_Graphics = 1;
 	};
 	print $@ if $@ and $@ !~ /^Can't locate/;
-
-	# This function provides access to the original stdout file handle
-	my $stdout = \*STDOUT;
-	*App::Prima::REPL::print_to_terminal = sub {
-		print $stdout @_;
-	};
 }
 
 my $version = 0.3;
@@ -86,26 +80,6 @@ $commands->alias_functions;
 # Set autoflush on stdout:
 $|++;
 
-###############################
-# Tie STDOUT to Output window #
-###############################
-
-use App::Prima::REPL::IO::OutWindow;
-
-# Create the tied file handle that we will reassign
-tie *PRINTOUT, 'App::Prima::REPL::IO::OutWindow' => $repl;
-# Redirect standard output to the new tied file handle
-select( *PRINTOUT );
-
-############################################
-# Tie STDERR to Output window and terminal #
-############################################
-
-# Create the tied file handle
-tie *ERROUT, 'App::Prima::REPL::IO::OutWindow::Err' => $repl;
-# Tie stderr to the new tied file handle
-*main::STDERR = \*ERROUT;
-
 ###############
 # Final items #
 ###############
@@ -117,8 +91,8 @@ print "Welcome to the Prima REPL, version $version.\n";
 print "Using PDL version $PDL::Version::VERSION\n" if ($loaded_PDL);
 print "Using PDL::Graphics::Prima\n" if ($loaded_Prima_Graphics);
 print "\n";
-print join(' ', "If you don't know what you're doing, you can get help by"
-				, "typing 'help' and pressing Enter, or by pressing Ctrl-h.\n");
+print join("\n", "If you don't know what you're doing, you can get help"
+		, "by typing 'help' and pressing Enter, or by pressing Ctrl-h.\n");
 
 
 #################################
