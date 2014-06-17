@@ -302,9 +302,15 @@ sub get_help {
 	}
 	
 	# Make sure the the opened help is visible (but check that the active
-	# window is defined, as this can cause trouble on Windows).
-	$::application->get_active_window->bring_to_front
-		if $::application->get_active_window;
+	# window is defined, as this can cause trouble on Windows). Also, make
+	# sure that the REPL gets focus again when the help window closes.
+	if ($::application->get_active_window) {
+		$::application->get_active_window->bring_to_front;
+		$::application->get_active_window->onClose(sub {
+			$self->window->select(1);
+			$::application->get_active_window->bring_to_front;
+		});
+	}
 }
 
 # Add some accelerator keys to the window for easier navigaton:
