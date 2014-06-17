@@ -235,9 +235,8 @@ sub clear {
 	my $self = shift;
 	my $repl = $self->repl;
 
-	$repl->output->text('');
-	$repl->output_line_number(0);
-	$repl->output_column(0);
+	$repl->output->clear;
+	$repl->output->repaint;
 }
 
 # eval function

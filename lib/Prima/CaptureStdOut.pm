@@ -74,14 +74,20 @@ sub init {
 	my %profile = $self->SUPER::init(@_);
 	
 	# Set some basic initializations
+	$self->clear;
+	$self->backColor($light_grey);
+	
+	return %profile;
+}
+
+sub clear {
+	my $self = shift;
 	$self->{output_type} = '';
 	$self->{output_column} = 0;
 	$self->{blocks} = [];
 	$self->{needs_new_block} = 1;
 	$self->{max_block_width} = 0;
-	$self->backColor($light_grey);
-	
-	return %profile;
+	delete $self->{curr_block};
 }
 
 # Each line is rendered by a seperate block, so make it easy to build new
@@ -318,6 +324,8 @@ sub append_output {
 	my $block = $self->{curr_block};
 	my $y_off = $block->[tb::BLK_Y] + $block->[tb::BLK_HEIGHT];
 	$self->paneSize($self->{max_block_width}, $y_off);
+	
+	$self->repaint;
 	
 	# Let the application update itself:
 	$::application->yield;
