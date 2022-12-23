@@ -16,8 +16,8 @@ BEGIN {
 our $VERSION = 0.03;
 use Moo;
 
-use Prima qw(Buttons Notebooks ScrollWidget Application Edit
-			FileDialog ImageViewer ImageDialog InputHistory);
+use Prima qw(Buttons Notebooks Widget::ScrollWidget Application Edit
+			Dialog::FileDialog ImageViewer Dialog::ImageDialog InputHistory);
 
 has 'output_line_number' => (
   is => 'rw',
@@ -90,12 +90,12 @@ has 'open_text_dialog' => (
 
 sub _build_open_text_dialog {
   my $self = shift;
-  return Prima::OpenDialog->new(filter => $self->text_file_extension_list);
+  return Prima::Dialog::OpenDialog->new(filter => $self->text_file_extension_list);
 };
 
 has 'open_dialog' => (
   is => 'rw',
-  default => sub { Prima::OpenDialog->new(filter => [[All => '*']]) },
+  default => sub { Prima::Dialog::OpenDialog->new(filter => [[All => '*']]) },
 );
 
 has 'padding' => (
