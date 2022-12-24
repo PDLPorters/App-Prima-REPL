@@ -19,6 +19,9 @@ my $build = Module::Build->new(
 		'PDL::Graphics::Prima' => '0',
 		'PDL' => '0',
 	},
+	test_requires => {
+		'Test::Simple' => '0.98',
+	},
 	meta_merge => {
 		resources => {
 			repository
