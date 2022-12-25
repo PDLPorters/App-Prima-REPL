@@ -11,13 +11,16 @@ my $build = Module::Build->new(
 	},
 	requires => {
 		Moo => '1.0',
-		Prima	=> '1.33',
+		Prima	=> '1.67',
 		'Data::Dumper::GUI' => '0.005',
 	},
 	recursive_test_files => 1,
 	recommends => {
 		'PDL::Graphics::Prima' => '0',
 		'PDL' => '0',
+	},
+	test_requires => {
+		'Test::Simple' => '0.98',
 	},
 	meta_merge => {
 		resources => {

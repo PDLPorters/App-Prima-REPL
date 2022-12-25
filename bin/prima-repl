@@ -84,11 +84,9 @@ $|++;
 # Final items #
 ###############
 
-eval 'require PDL::Version' if not defined $PDL::Version::VERSION;
-
 # Print the opening message:
 print "Welcome to the Prima REPL, version $version.\n";
-print "Using PDL version $PDL::Version::VERSION\n" if ($loaded_PDL);
+print "Using PDL version $PDL::VERSION\n" if ($loaded_PDL);
 print "Using PDL::Graphics::Prima\n" if ($loaded_Prima_Graphics);
 print "\n";
 print join("\n", "If you don't know what you're doing, you can get help"

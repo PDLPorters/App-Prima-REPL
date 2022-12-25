@@ -82,7 +82,7 @@ sub open_image {
 	}
 	else {
 		# Run the dialog and return if they cancel out:
-		my $dlg = Prima::ImageOpenDialog->create;
+		my $dlg = Prima::Dialog::ImageOpenDialog->create;
 		$image = $dlg->load;
 		return unless defined $image;
 	}
