@@ -401,7 +401,7 @@ sub tab_complete {
 sub press_enter {
 	my ($self, $text) = @_;
 	# Call the hooks, allowing them to modify the text as they go:
-	my $needs_to_eval = $self->notify(PressEnter => $text);
+	my $needs_to_eval = $self->notify(PressEnter => \$text);
 	$self->notify(Evaluate => $text) if $needs_to_eval;
 	$self->notify('PostEval');
 }
@@ -416,33 +416,33 @@ sub press_enter {
 # Additional PressEnter handlers are called after this one and can be added
 # with $input_widget->add_notification(PressEnter => sub {});
 sub on_pressenter {
-	my ($self, $text) = @_;
+	my ($self, $textref) = @_;
 
 	# Remove the endlines, if present, replacing them with safe whitespace:
-	$text =~ s/\n/ /g;
+	$$textref =~ s/\n/ /g;
 
 	# Reset the current collection of revisions:
 	$self->{currentRevisions} = [];
 
 	# print this line:
-	$self->outputHandler->command_printout($text);
+	$self->outputHandler->command_printout($$textref);
 
 	# We are about to add this text to the history. Before doing so, check if
 	# the history needs to be modified before performing the add:
 	if ($self->storeType == ih::NoRepeat
 		and defined $self->history->[-1]
-		and $self->history->[-1] eq $text
+		and $self->history->[-1] eq $$textref
 	) {
 		# remove the previous entry if it's identical to this one:
 		pop @{$self->history};
 	}
 	elsif ($self->storeType == ih::Unique) {
 		# Remove all the other identical entries if they are the same is this:
-		$self->history([ grep {$text ne $_} @{$self->history} ]);
+		$self->history([ grep {$$textref ne $_} @{$self->history} ]);
 	}
 
 	# Add the text as the last element in the entry:
-	push @{$self->history}, $text;
+	push @{$self->history}, $$textref;
 
 	# Remove the text from the entry
 	$self->text('');
@@ -731,7 +731,9 @@ and get the correct behavior.
 =item press_enter
 
 Accepts a string and runs the L<PressEnter|/PressEnter> chain of events with
-the given string rather than the contents of the C<InputHistory>.
+a reference to the given string rather than the contents of the C<InputHistory>.
+This allows the handlers to modify it, since as of Prima 1.73, modifying
+C<$_[1]> has no effect.
 
 =item tab_complete
 
@@ -808,7 +810,7 @@ L<PostEval|/PostEval>, which get called regardless of whether the event was
 cleared or not.
 
 If you register callbacks under this event, they will receive two arguments,
-the InputHistory widget and the current text being processed. By modifying
+the InputHistory widget and a reference to the current text being processed. By modifying
 the second argument directly, your event handler can modify the text that
 gets propagated to the remaining C<PressEnter> event callbacks and the
 L<Evaluate|/Evaluate> event. It can also prevent further processing by

@@ -30,7 +30,7 @@ subtest 'Evaluation control with PressEnter clear_event' => sub {
     my $ih = Prima::InputHistory->new(
         outputHandler => ih::Null,
         onPressEnter => sub {
-            $_[1] = "Test::More::pass('PressEnter callback successfully updated the text')";
+            ${$_[1]} = "Test::More::pass('PressEnter callback successfully updated the text')";
         },
     );
     $ih->press_enter("Test::More::fail('This was supposed to be changed by the PressEnter callback')");
