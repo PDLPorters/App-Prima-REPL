@@ -1,9 +1,20 @@
 bin/prima-repl
 Build.PL
+Changes
 lib/App/Prima/REPL.pm
-lib/PrimaX/InputHistory.pm
+lib/App/Prima/REPL/Commands.pm
+lib/App/Prima/REPL/Help.pod
+lib/Prima/CaptureStdOut.pm
+lib/Prima/InputHistory.pm
 MANIFEST			This list of files
-META.yml
-META.json
+README.pod
+simple-output-test.pl
 t/00-load-main.t
 t/01-load-input-history.t
+t/CaptureStdOut/00-simple.t
+t/CaptureStdOut/10-interacting.t
+t/CaptureStdOut/20-content.t
+t/InputHistory/10-navigation.t
+t/InputHistory/20-revisions.t
+t/InputHistory/30-events.t
+t/InputHistory/40-keyboard-equivalents.t
