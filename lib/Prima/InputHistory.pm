@@ -411,7 +411,7 @@ sub press_enter {
 # the contents of the text, so it is safe to unpack the text. Because this
 # the class's default handler, it always gets called first; derived classes
 # that want to provide different default behavior must be sure to handle the
-# history corretly, or call this (SUPER) method.
+# history correctly, or call this (SUPER) method.
 #
 # Additional PressEnter handlers are called after this one and can be added
 # with $input_widget->add_notification(PressEnter => sub {});
@@ -562,7 +562,7 @@ control and flexibility.
 REPLS usually show what was typed and how the system responded. Command
 prompts typically only show what was typed and what was printed during the
 execution of the command, suppressing the return value. Browser URL bars do
-not need any this.
+not need any of this.
 
 =back
 
@@ -606,7 +606,7 @@ want to view, B<relative to the most recent command>:
  # Select next most recently executed commnad
  $widget->currentLine(2);
 
- # If the use typed anything before navigating
+ # If the user typed anything before navigating
  # through history, this restores that text:
  $widget->currentLine(0);
 
@@ -700,7 +700,7 @@ set at object construction time and defaults to C<ih::All>.
 
 Note: it seems to me that this should also be open to taking a subref,
 which would perform whatever custom filter/sort is desired. Presently, this
-setting effects B<how a command is inserted into storage> and it is called
+setting affects B<how a command is inserted into storage> and it is called
 just after the user presses enter. In other words, this is not a replacement
 for autocompletion.
 
@@ -719,7 +719,7 @@ string rather than the (PressEnter munged) contents of the C<InputHistory>.
 
 This method moves through history using (possibly named) relative moves.
 Positive numbers move back in time, negative numbers move forward in time.
-(Yeah, it's kinda weird, but it makes the rest of it eaiser. I swear.)
+(Yeah, it's kinda weird, but it makes the rest of it easier. I swear.)
 Calling C<move_line> with 1 will move back in history by one step.
 
 The meaning of up and down as forward or backward in time depends on your
@@ -810,10 +810,10 @@ cleared or not.
 If you register callbacks under this event, they will receive two arguments,
 the InputHistory widget and the current text being processed. By modifying
 the second argument directly, your event handler can modify the text that
-gets propogated to the remaining C<PressEnter> event callbacks and the
+gets propagated to the remaining C<PressEnter> event callbacks and the
 L<Evaluate|/Evaluate> event. It can also prevent further processing by
 L<clearing the event|Prima::Object/clear_event>, which is helpful for
-creatomg specially parsed commands.
+creating specially parsed commands.
 
 =item Evaluate
 
@@ -840,7 +840,7 @@ not want to have any of the command preprocessing or post-eval performed.
 This notification is called as the last step of the L<PressEnter|/PressEnter>
 chain, or when you invoke the C<PostEval> method. This method is not given
 any arguments, it is simply called for cleanup. (If you need to know what
-was issued in the L<PressEnter|/PressEnter> call that preceeded this, you
+was issued in the L<PressEnter|/PressEnter> call that preceded this, you
 can include a L<PressEnter|/PressEnter> event that stores it in a closed-over
 variable that is also accessible to your C<PostEval> callback.) This is an
 L<nt::Request notification|Prima::Object/Execution control>, so C<PostEval>

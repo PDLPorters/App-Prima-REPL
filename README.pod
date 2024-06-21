@@ -84,7 +84,7 @@ what's wrong.
 
 =item optional: install PDL::Drawing::Prima
 
-PDL::Drawin::Prima is needed for the plotting library that I mention next.
+PDL::Drawing::Prima is needed for the plotting library that I mention next.
 Note that you should only install this if you are a PDL user and you have
 PDL installed.
 
