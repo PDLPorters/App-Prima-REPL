@@ -15,31 +15,31 @@ of hacking on data and making simple plots, these will not much matter.
 
 =head1 Roadmap
 
-Unfortunately, this project has been on a hiatus since roughly June. I have 
-three major widgets that I want to write and test, and then integrate fully into 
+Unfortunately, this project has been on a hiatus since roughly June. I have
+three major widgets that I want to write and test, and then integrate fully into
 the system.
 
-The first is Prima::InputHistory, which I wrote quite a while ago and for which 
+The first is Prima::InputHistory, which I wrote quite a while ago and for which
 I have already implemented a test suite.
 
-The second is Prima::CaptureStdOut, which has a first draft implementation of a 
-bigger concept. I wrote the Prima::CaptureStdOut widget and initial test suite 
-back in June. An even better implementation would break the widget into two 
-pieces: one that listened for events on stdout and stderr and fired callbacks 
-(called perhaps Prima::StdOutTee), and another that prettily displays the output 
-of those events (called perhaps Prima::StdOutText). Then, it would be possible 
-for different widgets to subscribe to the IO events. You could have the same 
-output going to different widgets, and have those widgets get updates 
-simultaneously. It would be neat. A more sophisticaed output handler could also 
-be given Perl objects to display, and then could query the objects to see if 
-they had their own custom display widgets. A PDL spreadsheet-like explorer comes 
-to mind, for example. This sort of advanced display widget would make it 
-possible to sanely display an output piddle. That, in turn, would allow me to 
-put the "P" back into the REPL. In combination with InputHistory, this would 
+The second is Prima::CaptureStdOut, which has a first draft implementation of a
+bigger concept. I wrote the Prima::CaptureStdOut widget and initial test suite
+back in June. An even better implementation would break the widget into two
+pieces: one that listened for events on stdout and stderr and fired callbacks
+(called perhaps Prima::StdOutTee), and another that prettily displays the output
+of those events (called perhaps Prima::StdOutText). Then, it would be possible
+for different widgets to subscribe to the IO events. You could have the same
+output going to different widgets, and have those widgets get updates
+simultaneously. It would be neat. A more sophisticaed output handler could also
+be given Perl objects to display, and then could query the objects to see if
+they had their own custom display widgets. A PDL spreadsheet-like explorer comes
+to mind, for example. This sort of advanced display widget would make it
+possible to sanely display an output piddle. That, in turn, would allow me to
+put the "P" back into the REPL. In combination with InputHistory, this would
 also allow a natural evolution of the REPL into a Notebook.
 
-Finally, I want to integrate an IRC client into the GUI so that beginners can 
-immediately get one-on-one help. I have a basic IRC client in Prima that I've 
+Finally, I want to integrate an IRC client into the GUI so that beginners can
+immediately get one-on-one help. I have a basic IRC client in Prima that I've
 meant to convert to a widget, but I got too busy. I'm also unsure how I would
 write a good test suite for it.
 

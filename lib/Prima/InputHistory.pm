@@ -29,7 +29,7 @@ sub new {my $self = {}; return bless $self}
 sub printout {
 	my $self = shift;
 	print @_;
-	
+
 	# Track the last printed line so that newline printout works:
 	if (defined $_[-1]) {
 		$self->{last_line} = $_[-1];
@@ -77,9 +77,9 @@ sub command_printout {
 	my $first_line = shift;
 	$self->newline_printout('> ' . $first_line, @_, "\n");
 }
-sub new { 
+sub new {
   my $class = shift;
-  return bless { repl => shift || die }, $class; 
+  return bless { repl => shift || die }, $class;
 }
 
 
@@ -130,14 +130,14 @@ sub init {
 	foreach ( qw(pageLines storeType pastIs) ) {
 		$self->{$_} = $profile{$_};
 	}
-	
+
 	# currentLine needs to be initialized:
 	$self->{currentLine} = 0;
-	
+
 	# Store the history and revisions:
 	$self->currentRevisions([]);
 	$self->history($profile{history});
-	
+
 	# Set up the output handler.
 	$self->outputHandler($profile{outputHandler});
 
@@ -159,14 +159,14 @@ sub init {
 ################################################################################
 sub move_line {
 	my ($self, $requested_move) = @_;
-	
+
 	$requested_move = $self->up_sign if $requested_move eq 'up';
 	$requested_move = $self->down_sign if $requested_move eq 'down';
 	$requested_move = $self->up_sign * $self->pageLines
 		if $requested_move eq 'pgup';
 	$requested_move = $self->down_sign * $self->pageLines
 		if $requested_move eq 'pgdn';
-	
+
 	# Determine the requested line number. (currentLine counts backwards)
 	$self->currentLine($self->currentLine() + $requested_move);
 }
@@ -224,9 +224,9 @@ sub down_sign {
 ################################################################################
 sub outputHandler {
 	return $_[0]->{outputHandler} unless $#_;
-	
+
 	my ($self, $outputHandler) = @_;
-	
+
 	# Perl scalars with text are not allowed:
 	if (not ref($outputHandler) and $outputHandler !~ /^\d+$/) {
 		croak("Unknown outputHandler $outputHandler");
@@ -292,34 +292,34 @@ sub storeType {
 sub currentLine {
 	return $_[0]->{currentLine} unless $#_;
 	my ($self, $line_number) = @_;
-	
+
 	# Save changes to the current line in the revision list:
 	$self->currentRevisions->[$self->{currentLine}] = $self->text;
-	
+
 	# Get the current character offset:
 	my $curr_offset = $self->charOffset;
 	# Note the end-of-line position by zero:
 	$curr_offset = 0 if $curr_offset == length($self->text);
-	
+
 	# make sure the requested line makes sense; set to zero if there is
 	# no history:
 	my $history_length = scalar @{$self->history};
 	$line_number = 0 if $line_number < 0;
 	$line_number = $history_length if $line_number > $history_length;
-	
+
 	# Set self's current line:
 	$self->{currentLine} = $line_number;
-	
+
 	# Load the text using the Orcish Maneuver:
 	my $new_text = defined $self->currentRevisions->[$line_number]
 			? $self->currentRevisions->[$line_number]
 			: $self->history->[-$line_number];
 	$self->text($new_text);
-	
+
 	# Put the cursor at the previous offset. However, if the previous offset
 	# was zero, put the cursor at the end of the line:
 	$self->charOffset($curr_offset || length($new_text));
-	
+
 	return $line_number;
 }
 
@@ -353,7 +353,7 @@ sub currentLine {
 		PostEval => nt::Request,
 		TabComplete => nt::Request,
 	);
-	
+
 	sub notification_types { return \%notifications }
 }
 
@@ -383,14 +383,14 @@ sub do_tab_complete {
 	my $left = substr $text, 0, $start;
 	my $selected = substr $text, $start, $stop - $start;
 	my $right = substr $text, $stop;
-	
+
 	$self->tab_complete($left, $selected, $right);
 }
 
 sub tab_complete {
 	my $self = shift;
 	croak('tab_complete needs three arguments') unless @_ == 3;
-	
+
 	# Issue the notification
 	$self->notify('TabComplete', @_);
 }
@@ -420,10 +420,10 @@ sub on_pressenter {
 
 	# Remove the endlines, if present, replacing them with safe whitespace:
 	$text =~ s/\n/ /g;
-	
+
 	# Reset the current collection of revisions:
 	$self->{currentRevisions} = [];
-	
+
 	# print this line:
 	$self->outputHandler->command_printout($text);
 
@@ -443,10 +443,10 @@ sub on_pressenter {
 
 	# Add the text as the last element in the entry:
 	push @{$self->history}, $text;
-	
+
 	# Remove the text from the entry
 	$self->text('');
-	
+
 	# Set the current line to the last one:
 	$self->{currentLine} = 0;
 }
@@ -465,14 +465,14 @@ navigation, and tab completion hooks
  use strict;
  use warnings;
  use Prima qw(Application InputHistory);
- 
+
  # A simple repl that prints the output to the screen
- 
+
  my $window = Prima::MainWindow->new(
      text => 'Simpe REPL',
      width => 600,
  );
- 
+
  my $file_name = 'my_history.txt';
  my $history_file_length = 10;
  my $inline = Prima::InputHistory->create(
@@ -482,7 +482,7 @@ navigation, and tab completion hooks
      storeType => ih::NoRepeat,
      onCreate => sub {
          my $self = shift;
-         
+
          # Open the file and set up the history:
          my @history;
          if (-f $file_name) {
@@ -493,13 +493,13 @@ navigation, and tab completion hooks
              }
              close $fh;
          }
-         
+
          # Restore the history from the saved file
          $self->history(\@history);
      },
      onDestroy => sub {
          my $self = shift;
-         
+
          # Save the last lines in the history file:
          open my $fh, '>', $file_name;
          # I want to save the *last* N lines, so I don't necessarily start at
@@ -514,9 +514,9 @@ navigation, and tab completion hooks
          close $fh;
      },
  );
- 
+
  print "Press Up/Down, Page-Up/Page-Down to see your input history\n";
- 
+
  run Prima;
 
 =head1 DESCRIPTION
@@ -605,7 +605,7 @@ want to view, B<relative to the most recent command>:
  $widget->currentLine(1);
  # Select next most recently executed commnad
  $widget->currentLine(2);
- 
+
  # If the use typed anything before navigating
  # through history, this restores that text:
  $widget->currentLine(0);
@@ -728,7 +728,7 @@ However, having set L<pastIs|/pastIs> to either C<ih::Up> or C<ih::Down>,
 you can call C<move_line> with the strings 'up', 'down', 'pgup', or 'pgdn'
 and get the correct behavior.
 
-=item press_enter 
+=item press_enter
 
 Accepts a string and runs the L<PressEnter|/PressEnter> chain of events with
 the given string rather than the contents of the C<InputHistory>.
@@ -765,15 +765,15 @@ text property, and you should probably clear the event:
  # Add a naive file completion
  $widget->add_notification(TabComplete => sub {
      my ($self, $left, $selection, $right) = @_;
-     
+
      # Are there any files that match the description?
      # If not, let the remaining notifications have their say.
      my @files = glob("$selection*");
      return unless @files;
-     
+
      # We found something, so clear the event
      $self->clear_event;
-     
+
      if (@files == 1) {
          # If there's only one item, complete it
          $self->text($left . $files[0] . $right);
